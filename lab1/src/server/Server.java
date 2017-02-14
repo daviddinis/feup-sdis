@@ -9,26 +9,38 @@ import java.net.SocketException;
  * Created by epassos on 2/14/17.
  */
 public class Server {
-    public static void main(String[] args) throws IOException {
+
+    private int portNumber;
+    private int length;
+    private byte[] buf;
+    private DatagramSocket socket;
+    private DatagramPacket packet;
+
+    Server(int port)throws IOException {
+        this.portNumber = port;
+
+        this.length = 100;
+        this.buf = new byte[length];
+
+        this.socket = new DatagramSocket(portNumber);
+        this.packet = new DatagramPacket(buf, length);
+    }
+
+    public void running()throws IOException {
         /**
          * recv_request();
          * process_req();
          * send_resp();
          */
 
-        int length = 100;
-        byte[] buf = new byte[length];
-
-        DatagramSocket socket = new DatagramSocket(8080);
-        DatagramPacket packet = new DatagramPacket(buf, length);
-
         while(true){
-            socket.receive(packet);
-            processResponse(packet);
+        /*    this.socket.receive(this.packet);
+            processResponse(this.packet);*/
+            System.out.println("boas\n");
         }
     }
 
-    public static void processResponse(DatagramPacket packet){
+    public void processResponse(DatagramPacket packet){
 
     }
 }
