@@ -10,7 +10,7 @@ public class ServerRunner {
 
     public static void main(String[] args) throws IOException {
         if(args.length != 1){
-            throw new IllegalArgumentException("\nBad usage: java server.ServerRunner portNumber");
+            throw new IllegalArgumentException("\nUsage: java server.ServerRunner portNumber");
         }
 
         int portNumber = Integer.parseInt(args[0]);

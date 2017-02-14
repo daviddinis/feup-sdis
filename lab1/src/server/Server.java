@@ -1,6 +1,7 @@
 package server;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
@@ -34,13 +35,15 @@ public class Server {
          */
 
         while(true){
-        /*    this.socket.receive(this.packet);
-            processResponse(this.packet);*/
-            System.out.println("boas\n");
+            this.socket.receive(this.packet);
+            processResponse(this.packet);
         }
     }
 
-    public void processResponse(DatagramPacket packet){
-
+    public void processResponse(DatagramPacket packet) throws UnsupportedEncodingException {
+        System.out.println("New Request");
+        byte[] buf = packet.getData();
+        String str = new String(buf,"UTF-8");
+        System.out.println(str);
     }
 }
