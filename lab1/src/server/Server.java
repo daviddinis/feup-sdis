@@ -24,11 +24,11 @@ public class Server {
 
         while(true){
             socket.receive(packet);
-            this.processResponse(packet);
+            processResponse(packet);
         }
     }
 
-    public void processResponse(DatagramPacket packet){
+    public static void processResponse(DatagramPacket packet){
 
     }
 }
