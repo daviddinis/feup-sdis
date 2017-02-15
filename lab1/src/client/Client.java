@@ -16,9 +16,9 @@ public class Client {
     private static String operation;
     private static String requestString;
 
-    public static void main(String[] args) throws IOException {
+    private static int serverPort;
 
-        String str = new String();
+    public static void main(String[] args) throws IOException {
 
         if(args[2] != null){
             operation  = args[2];
@@ -43,21 +43,17 @@ public class Client {
             throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <opnd>*");
         }
 
+        //initialize some variables
         socket = new DatagramSocket(8081);
+        serverPort = Integer.parseInt(args[1]);
 
-        byte[] buf = requestString.getBytes();
-        InetAddress adr = InetAddress.getLocalHost();
-
-        DatagramPacket packet = new DatagramPacket(buf,buf.length,adr,8080);
         /*
          * send_request();
          * recv_resp();
          * process_resp();
          */
 
-        socket.send(packet);
-        System.out.println("Request sent!\n");
-        System.out.println(requestString);
+        sendRequest(requestString);
 
         receiveReply();
     }
@@ -70,6 +66,19 @@ public class Client {
 
         String str = new String(packet.getData(),"UTF-8");
         System.out.println(str);
+    }
+
+    public static void sendRequest(String requestString) throws IOException {
+
+        System.out.println("Request sent!\n");
+        System.out.println(requestString);
+
+        byte[] buf = requestString.getBytes();
+        InetAddress adr = InetAddress.getLocalHost();
+        DatagramPacket packet = new DatagramPacket(buf,buf.length,adr,serverPort);
+
+        socket.send(packet);
+
     }
 
 }
