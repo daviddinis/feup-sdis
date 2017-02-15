@@ -39,9 +39,7 @@ public class Client {
         else {
             throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <opnd>*");
         }
-
-        String str = "Boas";
-
+        
         byte[] buf = str.getBytes();
         InetAddress adr = InetAddress.getLocalHost();
 
