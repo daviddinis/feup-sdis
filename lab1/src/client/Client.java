@@ -60,12 +60,6 @@ public class Client {
         System.out.println(requestString);
 
         receiveReply();
-
-      /*  socket.receive(packet);
-        System.out.println("Message received!\n");
-        buf = packet.getData();
-        str = new String(buf,"UTF-8");
-        System.out.println(str);*/
     }
 
     public static void receiveReply() throws IOException {

@@ -15,10 +15,7 @@ import java.util.HashMap;
 public class Server {
 
     private int portNumber;
-    private int length;
-    private byte[] buf;
     private DatagramSocket socket;
-    private DatagramPacket packet;
 
     private int destinationPort;
     private InetAddress destinationAddress;
@@ -28,28 +25,22 @@ public class Server {
     Server(int port)throws IOException {
         this.portNumber = port;
 
-        this.length = 100;
-        this.buf = new byte[length];
-
         this.socket = new DatagramSocket(portNumber);
-        this.packet = new DatagramPacket(buf, length);
-
         this.dataBase = new HashMap();
     }
 
     public void running()throws IOException {
 
-        /**
-         * recv_request();
-         * process_req();
-         * send_resp();
-         */
-
-        String clientReply = new String();
+        String clientReply;
+        DatagramPacket packet;
+        byte[] buf;
 
         while(true){
-            this.socket.receive(this.packet);
-            clientReply = processResponse(this.packet);
+            buf = new byte[255];
+            packet = new DatagramPacket(buf, buf.length);
+
+            this.socket.receive(packet);
+            clientReply = processResponse(packet);
             sendResponse(clientReply);
         }
     }
@@ -57,11 +48,11 @@ public class Server {
     public String processResponse(DatagramPacket packet) throws UnsupportedEncodingException {
         System.out.println("New Request");
 
-        String ret = new String();
+        String ret = "ERROR";
 
         byte[] buf = packet.getData();
         String str = new String(buf,"UTF-8");
-        str.trim();
+        str = str.trim();
         String[] results = str.split(":");
 
 
@@ -96,7 +87,7 @@ public class Server {
 
         byte[] buf = clientResponse.getBytes();
 
-        packet = new DatagramPacket(buf, buf.length, destinationAddress, destinationPort);
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, destinationAddress, destinationPort);
 
         socket.send(packet);
 
