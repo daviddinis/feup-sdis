@@ -10,21 +10,24 @@ import java.net.SocketException;
  * Created by epassos on 2/14/17.
  */
 public class Client {
+
+    private static DatagramSocket socket;
+
+    private static String operation;
+    private static String requestString;
+
     public static void main(String[] args) throws IOException {
-        /*if(args.length != 4 && args.length != 5){
-            throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <opnd>*");
-        }*/
 
         String str = new String();
 
         if(args[2] != null){
-            String operation  = args[2];
+            operation  = args[2];
             if(operation.equals("register")){
                 if(args.length != 5) {
                     throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <plate_number> <owner_name>");
                 }
                 else {
-                 str = args[3] + " " + args[4];
+                    requestString = args[2] + ":" + args[3] + ":" + args[4];
                 }
 
             }else if(operation.equals("lookup")){
@@ -32,15 +35,17 @@ public class Client {
                     throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <plate_number>");
                 }
                 else {
-                    str = args[3];
+                    requestString = args[2] + ":" + args[3];
                 }
             }
         }
         else {
             throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <opnd>*");
         }
-        
-        byte[] buf = str.getBytes();
+
+        socket = new DatagramSocket(8081);
+
+        byte[] buf = requestString.getBytes();
         InetAddress adr = InetAddress.getLocalHost();
 
         DatagramPacket packet = new DatagramPacket(buf,buf.length,adr,8080);
@@ -49,13 +54,28 @@ public class Client {
          * recv_resp();
          * process_resp();
          */
-        DatagramSocket socket = new DatagramSocket(8081);
 
         socket.send(packet);
+        System.out.println("Request sent!\n");
+        System.out.println(requestString);
+
+        receiveReply();
+
+      /*  socket.receive(packet);
+        System.out.println("Message received!\n");
+        buf = packet.getData();
+        str = new String(buf,"UTF-8");
+        System.out.println(str);*/
     }
 
-    public static String getStringRegister(String arg1, String arg2){
+    public static void receiveReply() throws IOException {
+        byte[] buf = new byte[255];
+        DatagramPacket packet = new DatagramPacket(buf,buf.length);
 
-        String ret = arg1+ " " + arg2;
+        socket.receive(packet);
+
+        String str = new String(packet.getData(),"UTF-8");
+        System.out.println(str);
     }
+
 }
