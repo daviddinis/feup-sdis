@@ -57,10 +57,14 @@ public class Server {
 
 
         if(results[0].equals("register")){
-
-            //TODO verificar se já existe uma key , se existir enviar um erro ao cliente
-            dataBase.put(results[1],results[2]);
-            ret = Integer.toString(dataBase.size());
+            
+            if(!dataBase.containsKey(results[1])){
+                dataBase.put(results[1],results[2]);
+                ret = Integer.toString(dataBase.size());
+            }
+            else {
+                ret = "PLATE NUMBER ALREADY TAKEN, ERROR";
+            }
 
         } else if(results[0].equals("lookup")){
 
