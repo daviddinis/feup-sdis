@@ -1,10 +1,7 @@
 package client;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.*;
 
 /**
  * Created by epassos on 2/14/17.
@@ -47,6 +44,7 @@ public class Client {
 
         //initialize some variables
         socket = new DatagramSocket(8081);
+        socket.setSoTimeout(5000);
         serverPort = Integer.parseInt(args[1]);
 
         /*
@@ -64,7 +62,12 @@ public class Client {
         byte[] buf = new byte[255];
         DatagramPacket packet = new DatagramPacket(buf,buf.length);
 
-        socket.receive(packet);
+        try{
+            socket.receive(packet);
+        } catch (SocketTimeoutException e){
+            System.out.println("Timeout, ending program");
+            System.exit(-1);
+        }
 
         String str = new String(packet.getData(),"UTF-8");
         System.out.println(str);
