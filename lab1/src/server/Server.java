@@ -57,7 +57,7 @@ public class Server {
 
 
         if(results[0].equals("register")){
-            
+
             if(!dataBase.containsKey(results[1])){
                 dataBase.put(results[1],results[2]);
                 ret = Integer.toString(dataBase.size());
