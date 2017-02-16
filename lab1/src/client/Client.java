@@ -27,6 +27,7 @@ public class Client {
                     throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <plate_number> <owner_name>");
                 }
                 else {
+                   checkPlateNumber(args[3]);
                     requestString = args[2] + ":" + args[3] + ":" + args[4];
                 }
 
@@ -35,6 +36,7 @@ public class Client {
                     throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <plate_number>");
                 }
                 else {
+                    checkPlateNumber(args[3]);
                     requestString = args[2] + ":" + args[3];
                 }
             }
@@ -79,6 +81,16 @@ public class Client {
 
         socket.send(packet);
 
+    }
+
+    public static void checkPlateNumber(String plateNumber){
+
+        String[] plateSubStrings = plateNumber.split("-");
+
+        if(plateSubStrings.length != 3 || plateSubStrings[0].length() != 2 ||
+                plateSubStrings[1].length() != 2 || plateSubStrings[2].length() != 4){
+            throw new IllegalArgumentException("\nplate_number Usage: dd-mm-yyyy");
+        }
     }
 
 }
