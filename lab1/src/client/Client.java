@@ -89,7 +89,7 @@ public class Client {
 
         if(plateSubStrings.length != 3 || plateSubStrings[0].length() != 2 ||
                 plateSubStrings[1].length() != 2 || plateSubStrings[2].length() != 2){
-            throw new IllegalArgumentException("\nplate_number Usage: nn-ll-nn");
+            throw new IllegalArgumentException("\nplate_number Usage: XX-XX-XX");
         }
     }
 
