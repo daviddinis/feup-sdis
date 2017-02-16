@@ -21,14 +21,14 @@ public class Client {
     public static void main(String[] args) throws IOException {
 
         if(args[2] != null){
-            operation  = args[2];
+            operation  = args[2].toLowerCase();
             if(operation.equals("register")){
                 if(args.length != 5) {
                     throw new IllegalArgumentException("\nUsage: java client.Client <host_name> <port_number> <oper> <plate_number> <owner_name>");
                 }
                 else {
                    checkPlateNumber(args[3]);
-                    requestString = args[2] + ":" + args[3] + ":" + args[4];
+                    requestString = operation + ":" + args[3] + ":" + args[4];
                 }
 
             }else if(operation.equals("lookup")){
@@ -37,7 +37,7 @@ public class Client {
                 }
                 else {
                     checkPlateNumber(args[3]);
-                    requestString = args[2] + ":" + args[3];
+                    requestString = operation + ":" + args[3];
                 }
             }
         }
