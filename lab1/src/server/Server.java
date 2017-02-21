@@ -1,99 +1,90 @@
 package server;
 
+
+import client.Client;
+
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.sql.ClientInfoStatus;
+import java.net.*;
 import java.util.HashMap;
 
 /**
- * Created by epassos on 2/14/17.
+ * Created by epassos on 2/20/17.
  */
 public class Server {
+    public static final int port = 8080;
+    private static HashMap<String,String> cars;
 
-    private int portNumber;
-    private DatagramSocket socket;
+    public static void main(String args[]) throws SocketException, UnknownHostException {
+        DatagramSocket socket = new DatagramSocket(port);
+        cars = new HashMap<>();
 
-    private int destinationPort;
-    private InetAddress destinationAddress;
-
-    private HashMap<String,String> dataBase;
-
-    Server(int port)throws IOException {
-        this.portNumber = port;
-
-        this.socket = new DatagramSocket(portNumber);
-        this.dataBase = new HashMap();
-    }
-
-    public void running()throws IOException {
-
-        String clientReply;
-        DatagramPacket packet;
-        byte[] buf;
-
-        while(true){
-            buf = new byte[255];
-            packet = new DatagramPacket(buf, buf.length);
-
-            this.socket.receive(packet);
-            clientReply = processResponse(packet);
-            sendResponse(clientReply);
+        try {
+            getRequest(socket);
+        }catch(IOException e){
+            System.err.println("Socket error");
+            System.exit(1);
         }
     }
 
-    public String processResponse(DatagramPacket packet) throws UnsupportedEncodingException {
-        System.out.println("New Request");
+    private static void getRequest(DatagramSocket socket) throws IOException {
+        InetAddress address = InetAddress.getLocalHost();
 
-        String ret = "ERROR";
-
-        byte[] buf = packet.getData();
-        String str = new String(buf,"UTF-8");
-        str = str.trim();
-        String[] results = str.split(":");
-
-
-        if(results[0].equals("register")){
-
-            if(!dataBase.containsKey(results[1])){
-                dataBase.put(results[1],results[2]);
-                ret = Integer.toString(dataBase.size());
-            }
-            else {
-                ret = "PLATE NUMBER ALREADY TAKEN, ERROR";
-            }
-
-        } else if(results[0].equals("lookup")){
-
-            String getResult = dataBase.get(results[1]);
-            if(getResult == null){
-                ret = "ERROR";
-            }
-            else {
-                ret = getResult;
+        while(true) {
+            byte[] buf = new byte[512];
+            DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
+            try {
+                socket.receive(packet);
+                String request = new String(packet.getData());
+                String response = processRequest(request.trim());
+                reply(response, socket);
+            } catch (IOException e) {
+                System.out.println("Socket error");
+                throw new IOException("Socket error");
             }
         }
-
-        destinationPort = packet.getPort();
-        destinationAddress = packet.getAddress();
-
-        System.out.println(str);
-
-        return ret;
     }
 
-    public void sendResponse(String clientResponse) throws IOException {
+    private static String processRequest(String request){
+        String[] reqArgs = request.split(";");
+        String operation = reqArgs[0];
+        String plate = reqArgs[1];
+        String response;
 
-        System.out.println("Replying: " + clientResponse);
+        if(operation.equalsIgnoreCase("register")) {
+            String name = reqArgs[2];
+            if(cars.containsKey(plate)){
+                System.out.println("Plate already registered");
+                response =  "-1";
+            }
+            else {
+                System.out.println("Registering plate " + plate + " to " + name);
+                cars.put(plate, name);
+                response = Integer.toString(cars.size());
+            }
+        }
+        else if(operation.equalsIgnoreCase("lookup")){
+            System.out.println(plate);
+            if(!cars.containsKey(plate)){
+                System.out.println("Plate not registered");
+                response = "NOT_FOUND";
+            }
+            else {
+                System.out.println("Lookup for plate " + reqArgs[1]);
+                response =  cars.get(plate);
+            }
+        }
+        else{
+            System.out.println("invalid operation!");
+            response = "-1";
+        }
 
-        byte[] buf = clientResponse.getBytes();
+        return response;
+    }
 
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, destinationAddress, destinationPort);
-
+    private static void reply(String response, DatagramSocket socket) throws IOException {
+        byte[] buf = response.getBytes();
+        InetAddress address = InetAddress.getLocalHost();
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, Client.port);
         socket.send(packet);
-
     }
 }
