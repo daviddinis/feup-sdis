@@ -1,33 +1,48 @@
 package src.peers;
 
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.MulticastSocket;
 
 public class PeerService {
 
-    private InetAddress mc_addr;
-    private int mc_port;
+    private String serverId;
 
-    private InetAddress mdb_addr;
-    private int mdb_port;  
+    private MulticastSocket mcSocket;
+    private InetAddress mcAddr;
+    private int mcPort;
 
-    private InetAddress mdr_addr;
-    private int mdr_port;
+    private MulticastSocket mdbSocket;
+    private InetAddress mdbAddr;
+    private int mdbPort;
 
-    public PeerService(InetAddress mc_addr,int mc_port,InetAddress mdb_addr,int mdb_port,
-                       InetAddress mdr_addr,int mdr_port){
+    private MulticastSocket mdrSocket;
+    private InetAddress mdrAddr;
+    private int mdrPort;
 
-        this.mc_addr = mc_addr;
-        this.mc_port = mc_port;
+    public PeerService(String serverId,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
+                       InetAddress mdrAddr,int mdrPort) throws IOException {
 
-        this.mdb_addr = mdb_addr;
-        this.mdb_port = mdb_port;
+        this.serverId = serverId;
 
-        this.mdr_addr = mdr_addr;
-        this.mdr_port = mdr_port;
+        this.mcAddr = mcAddr;
+        this.mcPort = mcPort;
 
-        System.out.println("Multicast channel addr: "+ mc_addr+" port: "+ mc_port);
-        System.out.println("Multicast data backup addr: "+ mdb_addr+" port: "+ mdb_port);
-        System.out.println("Multicast data restore addr: "+ mdr_addr+" port: "+ mdr_port);
+        this.mdbAddr = mdbAddr;
+        this.mdbPort = mdbPort;
+
+        this.mdrAddr = mdrAddr;
+        this.mdrPort = mdrPort;
+
+        System.out.println("Multicast channel addr: "+ this.mcAddr+" port: "+ this.mcPort);
+        System.out.println("Multicast data backup addr: "+ this.mdbAddr+" port: "+ this.mdbPort);
+        System.out.println("Multicast data restore addr: "+ this.mdrAddr+" port: "+ this.mdrPort);
+
+        mcSocket = new MulticastSocket(this.mcPort);
+        mcSocket.joinGroup(this.mcAddr);
+
+
+
 
     }
 
