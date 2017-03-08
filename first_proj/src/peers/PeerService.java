@@ -41,8 +41,11 @@ public class PeerService {
         mcSocket = new MulticastSocket(this.mcPort);
         mcSocket.joinGroup(this.mcAddr);
 
+        mdbSocket = new MulticastSocket(this.mdbPort);
+        mdbSocket.joinGroup(this.mdbAddr);
 
-
+        mdrSocket = new MulticastSocket(this.mdrPort);
+        mdrSocket.joinGroup(this.mdrAddr);
 
     }
 
