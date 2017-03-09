@@ -5,8 +5,8 @@ import src.common.InitiatorInterface;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
@@ -14,7 +14,7 @@ public class PeerService extends UnicastRemoteObject implements InitiatorInterfa
 
     private String serverId;
     private String protocolVersion;
-    private String accessPoint;
+    private String serviceAccessPoint;
 
     private MulticastSocket mcSocket;
     private InetAddress mcAddr;
@@ -28,12 +28,12 @@ public class PeerService extends UnicastRemoteObject implements InitiatorInterfa
     private InetAddress mdrAddr;
     private int mdrPort;
 
-    public PeerService(String serverId,String protocolVersion, String accessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
+    public PeerService(String serverId,String protocolVersion, String serviceAccessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
                        InetAddress mdrAddr,int mdrPort) throws IOException {
 
         this.serverId = serverId;
         this.protocolVersion = protocolVersion;
-        this.accessPoint = accessPoint;
+        this.serviceAccessPoint = serviceAccessPoint;
 
         this.mcAddr = mcAddr;
         this.mcPort = mcPort;
@@ -57,12 +57,13 @@ public class PeerService extends UnicastRemoteObject implements InitiatorInterfa
         mdrSocket = new MulticastSocket(this.mdrPort);
         mdrSocket.joinGroup(this.mdrAddr);*/
       
-     /*   try{
-            Naming.rebind("peerObj",this);
+        try{
+            Registry registry = LocateRegistry.getRegistry();
+            registry.bind(this.serviceAccessPoint,this);
         }catch (Exception e){
             System.out.println("Peer error: "+ e.getMessage());
             e.printStackTrace();
-        }*/
+        }
 
     }
 

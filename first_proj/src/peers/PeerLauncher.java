@@ -13,7 +13,7 @@ public class PeerLauncher {
 
         String serverId = args[0];
         String protocolVersion = args[1];
-        String accessPoint = args[2];
+        String serviceAccessPoint = args[2];
         InetAddress mcAddr = InetAddress.getByName(args[3]);
         int mcPort = Integer.parseInt(args[4]);
         InetAddress mdbAddr = InetAddress.getByName(args[5]);
@@ -21,7 +21,7 @@ public class PeerLauncher {
         InetAddress mdrAddr = InetAddress.getByName(args[7]);
         int mdrPort = Integer.parseInt(args[8]);
 
-        PeerService peerService = new PeerService(serverId, protocolVersion, accessPoint,mcAddr,mcPort,
+        PeerService peerService = new PeerService(serverId, protocolVersion, serviceAccessPoint,mcAddr,mcPort,
                 mdbAddr,mdbPort,mdrAddr,mdrPort);
     }
 }
