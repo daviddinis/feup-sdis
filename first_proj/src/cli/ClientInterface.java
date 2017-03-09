@@ -19,13 +19,49 @@ public class ClientInterface {
 
     public static void main(String args[]) throws RemoteException, NotBoundException {
 
+        if(args.length != 4 && args.length != 5){
+            throw new IllegalArgumentException("\nUsage: java ClientInterface <peerAp>" +
+                    " <subProtocol> <opnd1> <opnd2> ");
+        }
+
+        String peerAp = args[0];
+        String subPrototocol = args[1];
+        String operation = args[2];
+
         try {
             Registry registry = LocateRegistry.getRegistry();
-            initiatorPeer  = (InitiatorInterface) registry.lookup("teste");
+            initiatorPeer  = (InitiatorInterface) registry.lookup(peerAp);
         } catch (Exception e){
             System.err.println("Client exception: " + e.toString());
             e.printStackTrace();
         }
-        initiatorPeer.backup("fwfwe",2);
+
+        String pathname;
+
+        switch (operation){
+            case "BACKUP":
+                pathname = args[3];
+                int replicationDegree = Integer.parseInt(args[4]);
+                initiatorPeer.backup(pathname,replicationDegree);
+                break;
+            case "RESTORE":
+                pathname = args[3];
+                initiatorPeer.restore(pathname);
+                break;
+            case "DELETE":
+                pathname = args[3];
+                initiatorPeer.delete(pathname);
+                break;
+            case "RECLAIM":
+                int maxDiskSpace = Integer.parseInt(args[3]);
+                initiatorPeer.reclaim(maxDiskSpace);
+                break;
+            case "STATE":
+                initiatorPeer.state();
+                break;
+            default:
+                break;
+        }
+
     }
 }
