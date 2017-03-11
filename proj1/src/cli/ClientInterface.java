@@ -1,10 +1,7 @@
-package src.cli;
+package cli;
 
-import com.sun.org.apache.xml.internal.security.Init;
-import src.common.InitiatorInterface;
-import src.peers.PeerService;
+import common.InitiatorInterface;
 
-import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;

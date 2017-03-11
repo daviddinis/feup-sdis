@@ -1,8 +1,7 @@
-package src.peers;
+package peers;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class PeerLauncher {
     public static void main(String[] args) throws IOException {

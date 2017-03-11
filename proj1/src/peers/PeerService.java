@@ -1,6 +1,6 @@
-package src.peers;
+package peers;
 
-import src.common.InitiatorInterface;
+import common.InitiatorInterface;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -10,7 +10,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
-public class PeerService extends UnicastRemoteObject implements InitiatorInterface{
+public class PeerService extends UnicastRemoteObject implements InitiatorInterface {
 
     private String serverId;
     private String protocolVersion;
