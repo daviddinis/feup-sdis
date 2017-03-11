@@ -29,9 +29,9 @@
 # IntelliJ
 /out/
 */out/
-first_proj/out
-first_proj/first_proj.iml
-first_proj/.idea
+proj1/out
+proj1/proj1.iml
+proj1/.idea
 lab1/lab1.iml
 
 # mpeltonen/sbt-idea plugin
