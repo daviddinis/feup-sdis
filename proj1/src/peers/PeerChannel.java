@@ -35,7 +35,6 @@ public class PeerChannel {
 
                 try {
                     socket.receive(packet);
-                    System.out.println("Recebi");
                     processMessage(packet);
                 } catch (IOException e) {
                     e.printStackTrace();
