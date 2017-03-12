@@ -13,10 +13,13 @@ public class PeerLauncher {
         String serverId = args[0];
         String protocolVersion = args[1];
         String serviceAccessPoint = args[2];
+
         InetAddress mcAddr = InetAddress.getByName(args[3]);
         int mcPort = Integer.parseInt(args[4]);
+
         InetAddress mdbAddr = InetAddress.getByName(args[5]);
         int mdbPort = Integer.parseInt(args[6]);
+
         InetAddress mdrAddr = InetAddress.getByName(args[7]);
         int mdrPort = Integer.parseInt(args[8]);
 
