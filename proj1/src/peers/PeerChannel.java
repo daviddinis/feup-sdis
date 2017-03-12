@@ -5,9 +5,6 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
-/**
- * Created by nuno on 12-03-2017.
- */
 public class PeerChannel {
 
     private InetAddress addr;

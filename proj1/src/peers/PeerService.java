@@ -1,15 +1,9 @@
 package peers;
 
-import common.InitiatorInterface;
-
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.net.MulticastSocket;
-import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 
 public class PeerService {
 
