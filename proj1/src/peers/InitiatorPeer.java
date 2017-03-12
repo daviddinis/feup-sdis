@@ -2,21 +2,30 @@ package peers;
 
 import common.InitiatorInterface;
 
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-/**
- * Created by nuno on 12-03-2017.
- */
 public class InitiatorPeer extends UnicastRemoteObject implements InitiatorInterface {
 
-    public InitiatorPeer() throws RemoteException {
+    private PeerChannel multiChannel;
+    private PeerChannel multiDataBackUpChannel;
+    private PeerChannel multiDataRestoreChannel;
+
+    public InitiatorPeer(PeerChannel multiChannel,PeerChannel multiDataBackUpChannel,
+                         PeerChannel multiDataRestoreChannel) throws RemoteException {
+
+        this.multiChannel = multiChannel;
+        this.multiDataBackUpChannel = multiDataBackUpChannel;
+        this.multiDataRestoreChannel = multiDataRestoreChannel;
 
     }
 
     @Override
-    public void backup(String pathname, int replicationDegree) throws RemoteException {
-        System.out.println("Parece estar a pintar");
+    public void backup(String pathname, int replicationDegree) throws IOException {
+        System.out.println("New backup request");
+
+        multiDataBackUpChannel.sendMessage(pathname);
     }
 
     @Override

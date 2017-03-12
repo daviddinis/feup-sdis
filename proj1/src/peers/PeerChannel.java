@@ -1,6 +1,7 @@
 package peers;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -17,6 +18,7 @@ public class PeerChannel {
         this.port = port;
 
         socket = new MulticastSocket(this.port);
+
         socket.joinGroup(this.addr);
     }
 
@@ -27,12 +29,14 @@ public class PeerChannel {
             while (true) {
 
                 byte[] buf = new byte[500];
-                DatagramPacket mcastPacket = new DatagramPacket(buf, buf.length);
+                DatagramPacket packet = new DatagramPacket(buf, buf.length);
 
                 System.out.println("Starting reading messages");
 
                 try {
-                    socket.receive(mcastPacket);
+                    socket.receive(packet);
+                    System.out.println("Recebi");
+                    processMessage(packet);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -42,8 +46,23 @@ public class PeerChannel {
         new Thread(task).start();
     }
 
-    public void sendMessage(){
+    public void sendMessage(String message) throws IOException {
 
+        System.out.println("Sending "+ message);
+
+        byte[] buf = message.getBytes();
+        DatagramPacket packet = new DatagramPacket(buf,buf.length,addr,port);
+
+        socket.send(packet);
+
+    }
+
+    public void processMessage(DatagramPacket packet) throws UnsupportedEncodingException {
+        byte[] temp = packet.getData();
+        String str = new String(temp,"UTF-8");
+        str = str.replaceAll("\\D+","");
+        System.out.println(str);
+        System.out.println(str.length());
     }
 
 }

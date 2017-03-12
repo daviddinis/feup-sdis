@@ -32,7 +32,7 @@ public class PeerService {
         System.out.println("Multicast data backup addr: "+ mdbAddr+" port: "+ mdbPort);
         System.out.println("Multicast data restore addr: "+ mdrAddr+" port: "+ mdrPort);
 
-        initiatorPeer = new InitiatorPeer();
+        initiatorPeer = new InitiatorPeer(multiChannel, multiDataBackUpChannel,multiDataRestoreChannel);
 
         try{
             Registry registry = LocateRegistry.getRegistry();
@@ -45,8 +45,6 @@ public class PeerService {
         multiChannel.receiveMessage();
         multiDataBackUpChannel.receiveMessage();
         multiDataRestoreChannel.receiveMessage();
-
-        System.out.println("Pintou");
 
     }
 }

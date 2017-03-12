@@ -1,5 +1,6 @@
 package common;
 
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
@@ -11,7 +12,7 @@ public interface InitiatorInterface extends Remote {
      * @param replicationDegree
      * @throws RemoteException
      */
-    void backup(String pathname, int replicationDegree) throws RemoteException;
+    void backup(String pathname, int replicationDegree) throws IOException;
 
     /**
      * Function used by the user to restore a determined file

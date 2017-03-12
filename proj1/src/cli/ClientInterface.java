@@ -2,19 +2,16 @@ package cli;
 
 import common.InitiatorInterface;
 
+import java.io.IOException;
 import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-/**
- * Created by nuno on 09-03-2017.
- */
 public class ClientInterface {
 
     private static InitiatorInterface initiatorPeer;
 
-    public static void main(String args[]) throws RemoteException, NotBoundException {
+    public static void main(String args[]) throws IOException, NotBoundException {
 
         if(args.length != 4 && args.length != 5){
             throw new IllegalArgumentException("\nUsage: java ClientInterface <peerAp>" +
