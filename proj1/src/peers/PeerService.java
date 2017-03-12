@@ -17,17 +17,9 @@ public class PeerService {
     private String protocolVersion;
     private String serviceAccessPoint;
 
-    private MulticastSocket mcSocket;
-    private InetAddress mcAddr;
-    private int mcPort;
-
-    private MulticastSocket mdbSocket;
-    private InetAddress mdbAddr;
-    private int mdbPort;
-
-    private MulticastSocket mdrSocket;
-    private InetAddress mdrAddr;
-    private int mdrPort;
+    private PeerChannel multiChannel;
+    private PeerChannel multiDataBackUpChannel;
+    private PeerChannel multiDataRestoreChannel;
 
     private InitiatorPeer initiatorPeer;
 
@@ -38,27 +30,13 @@ public class PeerService {
         this.protocolVersion = protocolVersion;
         this.serviceAccessPoint = serviceAccessPoint;
 
-        this.mcAddr = mcAddr;
-        this.mcPort = mcPort;
+        multiChannel = new PeerChannel(mcAddr,mcPort);
+        multiDataBackUpChannel = new PeerChannel(mdbAddr, mdbPort);
+        multiDataRestoreChannel = new PeerChannel(mdrAddr,mdrPort);
 
-        this.mdbAddr = mdbAddr;
-        this.mdbPort = mdbPort;
-
-        this.mdrAddr = mdrAddr;
-        this.mdrPort = mdrPort;
-
-        System.out.println("Multicast channel addr: "+ this.mcAddr+" port: "+ this.mcPort);
-        System.out.println("Multicast data backup addr: "+ this.mdbAddr+" port: "+ this.mdbPort);
-        System.out.println("Multicast data restore addr: "+ this.mdrAddr+" port: "+ this.mdrPort);
-
-        mcSocket = new MulticastSocket(this.mcPort);
-        mcSocket.joinGroup(this.mcAddr);
-
-        mdbSocket = new MulticastSocket(this.mdbPort);
-        mdbSocket.joinGroup(this.mdbAddr);
-
-        mdrSocket = new MulticastSocket(this.mdrPort);
-        mdrSocket.joinGroup(this.mdrAddr);
+        System.out.println("Multicast channel addr: "+ mcAddr+" port: "+ mcPort);
+        System.out.println("Multicast data backup addr: "+ mdbAddr+" port: "+ mdbPort);
+        System.out.println("Multicast data restore addr: "+ mdrAddr+" port: "+ mdrPort);
 
         initiatorPeer = new InitiatorPeer();
 
@@ -69,6 +47,12 @@ public class PeerService {
             System.out.println("Peer error: "+ e.getMessage());
             e.printStackTrace();
         }
+
+        multiChannel.receiveMessage();
+        multiDataBackUpChannel.receiveMessage();
+        multiDataRestoreChannel.receiveMessage();
+
+        System.out.println("Pintou");
 
     }
 }
