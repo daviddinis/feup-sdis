@@ -7,6 +7,8 @@ import java.rmi.registry.Registry;
 
 public class PeerService {
 
+    public static final String CRLF = "\r\n";
+
     private String serverId;
     private String protocolVersion;
     private String serviceAccessPoint;
@@ -32,7 +34,7 @@ public class PeerService {
         System.out.println("Multicast data backup addr: "+ mdbAddr+" port: "+ mdbPort);
         System.out.println("Multicast data restore addr: "+ mdrAddr+" port: "+ mdrPort);
 
-        initiatorPeer = new InitiatorPeer(multiChannel, multiDataBackUpChannel,multiDataRestoreChannel,this);
+        initiatorPeer = new InitiatorPeer(this);
 
         try{
             //TODO add ip address
@@ -56,5 +58,31 @@ public class PeerService {
 
     public String getProtocolVersion() {
         return protocolVersion;
+    }
+
+    private String getHeader(String... fields) {
+
+        String header = "";
+
+        for(String field : fields){
+            header = header.concat(field+" ");
+        }
+
+        header.concat(CRLF + CRLF);
+
+        return header;
+    }
+
+    public void requestChunkBackup(String pathname, String replicationDegree,byte[] chunk) throws IOException {
+
+        String header = getHeader("PUTCHUNK",protocolVersion,pathname,
+                "ChunkNO",replicationDegree);
+
+        System.out.println(header);
+
+        byte[] buf = header.getBytes();
+
+        multiDataBackUpChannel.sendMessage(buf);
+
     }
 }
