@@ -19,9 +19,10 @@ public class InitiatorPeer extends UnicastRemoteObject implements InitiatorInter
     @Override
     public void backup(String pathname, int replicationDegree) throws IOException {
         System.out.println("New backup request");
-
+        
         //Add for
         byte[] chunk = "so para nao dar erro".getBytes();
+
 
         peer.requestChunkBackup(pathname,Integer.toString(replicationDegree),chunk);
     }
