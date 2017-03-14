@@ -35,9 +35,11 @@ public class PeerService {
         initiatorPeer = new InitiatorPeer(multiChannel, multiDataBackUpChannel,multiDataRestoreChannel);
 
         try{
+            //TODO add ip address
             Registry registry = LocateRegistry.getRegistry();
             registry.bind(this.serviceAccessPoint,initiatorPeer);
         }catch (Exception e){
+            //TODO add rebind
             System.out.println("Peer error: "+ e.getMessage());
             e.printStackTrace();
         }
