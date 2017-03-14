@@ -32,7 +32,7 @@ public class PeerService {
         System.out.println("Multicast data backup addr: "+ mdbAddr+" port: "+ mdbPort);
         System.out.println("Multicast data restore addr: "+ mdrAddr+" port: "+ mdrPort);
 
-        initiatorPeer = new InitiatorPeer(multiChannel, multiDataBackUpChannel,multiDataRestoreChannel);
+        initiatorPeer = new InitiatorPeer(multiChannel, multiDataBackUpChannel,multiDataRestoreChannel,this);
 
         try{
             //TODO add ip address
@@ -48,5 +48,13 @@ public class PeerService {
         multiDataBackUpChannel.receiveMessage();
         multiDataRestoreChannel.receiveMessage();
 
+    }
+
+    public String getServerId() {
+        return serverId;
+    }
+
+    public String getProtocolVersion() {
+        return protocolVersion;
     }
 }

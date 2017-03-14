@@ -45,21 +45,19 @@ public class PeerChannel {
         new Thread(task).start();
     }
 
-    public void sendMessage(String message) throws IOException {
+    public void sendMessage(byte[] message) throws IOException {
 
-        System.out.println("Sending "+ message);
-
-        byte[] buf = message.getBytes();
-        DatagramPacket packet = new DatagramPacket(buf,buf.length,addr,port);
+        DatagramPacket packet = new DatagramPacket(message,message.length,addr,port);
 
         socket.send(packet);
 
     }
 
     public void processMessage(DatagramPacket packet) throws UnsupportedEncodingException {
-        byte[] temp = packet.getData();
-        String str = new String(temp,"UTF-8");
-        str = str.replaceAll("\\D+","");
+        byte[] buffer = packet.getData();
+
+        String str = new String(buffer, 0, packet.getLength());
+
         System.out.println(str);
         System.out.println(str.length());
     }
