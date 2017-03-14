@@ -47,10 +47,10 @@ public class InitiatorPeer extends UnicastRemoteObject implements InitiatorInter
     public void backup(String pathname, int replicationDegree) throws IOException {
         System.out.println("New backup request");
 
-        String repliDegree = Integer.toString(replicationDegree);
+        String repDeg = Integer.toString(replicationDegree);
 
         String header = getHeader("PUTCHUNK",peer.getProtocolVersion(),pathname,
-                "ChunkNO",repliDegree);
+                "ChunkNO",repDeg);
 
         System.out.println(header);
 
