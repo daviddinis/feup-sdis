@@ -29,6 +29,10 @@
 # IntelliJ
 /out/
 */out/
+proj1/src/out
+proj1/src/proj1.iml
+proj1/src/.idea
+lab1/lab1.iml
 
 # mpeltonen/sbt-idea plugin
 .idea_modules/
