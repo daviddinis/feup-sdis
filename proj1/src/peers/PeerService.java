@@ -8,6 +8,7 @@ import java.rmi.registry.Registry;
 public class PeerService {
 
     public static final String CRLF = "\r\n";
+    public static final int CHUNK_SIZE = 64000;
 
     private String serverId;
     private String protocolVersion;
