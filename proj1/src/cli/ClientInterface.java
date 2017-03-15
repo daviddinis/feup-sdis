@@ -24,6 +24,7 @@ public class ClientInterface {
 
         try {
             Registry registry = LocateRegistry.getRegistry();
+
             initiatorPeer  = (InitiatorInterface) registry.lookup(peerAp);
         } catch (Exception e){
             System.err.println("Client exception: " + e.toString());

@@ -17,7 +17,7 @@ public class PeerService {
     private PeerChannel multiDataBackUpChannel;
     private PeerChannel multiDataRestoreChannel;
 
-    private InitiatorPeer initiatorPeer;
+    private PeerClientLink initiatorPeer;
 
     public PeerService(String serverId,String protocolVersion, String serviceAccessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
                        InetAddress mdrAddr,int mdrPort) throws IOException {
@@ -34,7 +34,7 @@ public class PeerService {
         System.out.println("Multicast data backup addr: "+ mdbAddr+" port: "+ mdbPort);
         System.out.println("Multicast data restore addr: "+ mdrAddr+" port: "+ mdrPort);
 
-        initiatorPeer = new InitiatorPeer(this);
+        initiatorPeer = new PeerClientLink(this);
 
         try{
             //TODO add ip address
