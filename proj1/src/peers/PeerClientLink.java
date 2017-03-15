@@ -40,7 +40,10 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         } catch (FileNotFoundException e){
             throw e;
         }
+
         System.out.println("New backup request for file " + filepath);
+
+        String fileId = getFileHash(filepath);
 
         while(file.available() > 0){
             byte[] chunk = new byte[PeerService.CHUNK_SIZE];
@@ -75,8 +78,8 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
     }
 
-    private String getFileHash(String pathname) throws IOException {
-        Path path = Paths.get(pathname);
+    private String getFileHash(String filepath) throws IOException {
+        Path path = Paths.get(filepath);
 
         BasicFileAttributes basicAttr = Files.readAttributes(path, BasicFileAttributes.class);
 
@@ -85,7 +88,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         DateFormat df = new SimpleDateFormat("dd/MM/yyyy");
         String dateCreated = df.format(creationTime.toMillis());
 
-        String stringToHash = pathname + dateCreated;
+        String stringToHash = filepath + dateCreated;
 
         //Making hash
         MessageDigest hashDigest;
