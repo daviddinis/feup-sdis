@@ -1,5 +1,6 @@
 package peers;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
@@ -50,9 +51,24 @@ public class PeerService {
             e.printStackTrace();
         }
 
+        creatingAFolder(serverId);
+        creatingAFolder(serverId + "/MyFiles");
+        creatingAFolder(serverId + "/PeersFiles");
+
         multiChannel.receiveMessage();
         multiDataBackUpChannel.receiveMessage();
         multiDataRestoreChannel.receiveMessage();
+
+    }
+
+    public void creatingAFolder(String folderPath) {
+
+        File file = new File(folderPath);
+        boolean success = file.mkdir();
+
+        if(success){
+            System.out.println("Directory: " + folderPath + " created");
+        }
 
     }
 
