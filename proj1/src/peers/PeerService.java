@@ -28,11 +28,11 @@ public class PeerService {
         this.protocolVersion = protocolVersion;
         this.serviceAccessPoint = serviceAccessPoint;
 
-        multiChannel = new PeerChannel(mcAddr,mcPort);
+        multiChannel = new PeerChannel(mcAddr,mcPort,this);
         System.out.println("Control Channel ready! Listening...");
-        multiDataBackUpChannel = new PeerChannel(mdbAddr, mdbPort);
+        multiDataBackUpChannel = new PeerChannel(mdbAddr, mdbPort,this);
         System.out.println("Data Backup Channel ready! Listening...");
-        multiDataRestoreChannel = new PeerChannel(mdrAddr,mdrPort);
+        multiDataRestoreChannel = new PeerChannel(mdrAddr,mdrPort,this);
         System.out.println("Restore Channel ready! Listening...");
 
         System.out.println("Multicast channel addr: "+ mcAddr+" port: "+ mcPort);
@@ -72,14 +72,6 @@ public class PeerService {
 
     }
 
-    public String getServerId() {
-        return serverId;
-    }
-
-    public String getProtocolVersion() {
-        return protocolVersion;
-    }
-
     private String getHeader(String... fields) {
 
         String header = "";
@@ -93,9 +85,9 @@ public class PeerService {
         return header;
     }
 
-    public void requestChunkBackup(String pathname, String replicationDegree,byte[] chunk) throws IOException {
+    public void requestChunkBackup(String fileId, String replicationDegree,byte[] chunk) throws IOException {
 
-        String header = getHeader("PUTCHUNK",protocolVersion,pathname,
+        String header = getHeader("PUTCHUNK",protocolVersion,serverId,fileId,
                 "ChunkNO",replicationDegree);
 
         System.out.println(header);
@@ -104,5 +96,15 @@ public class PeerService {
 
         multiDataBackUpChannel.sendMessage(buf);
 
+    }
+
+    public void messageReceiverHandler(byte[] data){
+
+        // Message Handler............
+        try {
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

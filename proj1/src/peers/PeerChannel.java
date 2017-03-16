@@ -13,9 +13,12 @@ public class PeerChannel {
 
     private MulticastSocket socket;
 
-    public PeerChannel(InetAddress addr, int port) throws IOException {
+    private PeerService peer;
+
+    public PeerChannel(InetAddress addr, int port, PeerService peer) throws IOException {
         this.addr = addr;
         this.port = port;
+        this.peer = peer;
 
         socket = new MulticastSocket(this.port);
 
@@ -30,7 +33,6 @@ public class PeerChannel {
 
                 byte[] buf = new byte[500];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
-
 
                 try {
                     socket.receive(packet);
@@ -59,6 +61,12 @@ public class PeerChannel {
 
         System.out.println(str);
         System.out.println(str.length());
+
+        Runnable task = () -> {
+            peer.messageReceiverHandler(buffer);
+        };
+
+        new Thread(task).start();
     }
 
 }
