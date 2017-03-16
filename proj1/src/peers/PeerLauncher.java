@@ -6,6 +6,7 @@ import java.net.InetAddress;
 public class PeerLauncher {
     public static void main(String[] args) throws IOException {
         if(args.length != 9){
+            System.out.println(args.length);
             throw new IllegalArgumentException("\nUsage: java PeerLauncher <peerId> <protocolVersion> <accessPoint>" +
                     " <mcAddr> <mcPort> <mdbSddr> <mdbPort> <mdrAddr> <mdrPort>");
         }
