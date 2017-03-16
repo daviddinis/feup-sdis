@@ -101,10 +101,6 @@ public class PeerService {
     public void messageReceiverHandler(byte[] data){
 
         // Message Handler............
-        try {
-            Thread.sleep(4000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+      
     }
 }
