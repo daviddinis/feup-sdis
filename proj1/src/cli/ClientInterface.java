@@ -14,8 +14,9 @@ public class ClientInterface {
     public static void main(String args[]) throws IOException, NotBoundException {
 
         if(args.length != 4 && args.length != 5){
+            System.out.println(args.length);
             throw new IllegalArgumentException("\nUsage: java ClientInterface <peerAp>" +
-                    " <subProtocol> <opnd1> <opnd2> ");
+                    " <protocol-version> <operation> <opnd1> <opnd2> ");
         }
 
         String peerAp = args[0];
@@ -33,7 +34,7 @@ public class ClientInterface {
 
         String pathname;
 
-        switch (operation){
+        switch (operation.toUpperCase()){
             case "BACKUP":
                 pathname = args[3];
                 int replicationDegree = Integer.parseInt(args[4]);

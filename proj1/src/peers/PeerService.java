@@ -28,8 +28,11 @@ public class PeerService {
         this.serviceAccessPoint = serviceAccessPoint;
 
         multiChannel = new PeerChannel(mcAddr,mcPort);
+        System.out.println("Control Channel ready! Listening...");
         multiDataBackUpChannel = new PeerChannel(mdbAddr, mdbPort);
+        System.out.println("Data Backup Channel ready! Listening...");
         multiDataRestoreChannel = new PeerChannel(mdrAddr,mdrPort);
+        System.out.println("Restore Channel ready! Listening...");
 
         System.out.println("Multicast channel addr: "+ mcAddr+" port: "+ mcPort);
         System.out.println("Multicast data backup addr: "+ mdbAddr+" port: "+ mdbPort);

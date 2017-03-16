@@ -31,7 +31,6 @@ public class PeerChannel {
                 byte[] buf = new byte[500];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
 
-                System.out.println("Starting reading messages");
 
                 try {
                     socket.receive(packet);
