@@ -37,6 +37,7 @@ public class ClientInterface {
             case "BACKUP":
                 pathname = args[3];
                 int replicationDegree = Integer.parseInt(args[4]);
+                System.out.println("Requesting backup of file " + pathname + "with a replication degree of " + replicationDegree);
                 initiatorPeer.backup(pathname,replicationDegree);
                 break;
             case "RESTORE":

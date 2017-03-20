@@ -18,6 +18,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 
 public class PeerClientLink extends UnicastRemoteObject implements InitiatorInterface {
 
@@ -46,16 +47,14 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         String fileId = getFileHash(filepath);
 
         while(file.available() > 0){
-            byte[] chunk = new byte[PeerService.CHUNK_SIZE];
+            int readableBytes = file.available();
+            byte[] chunk;
+            if(readableBytes > PeerService.CHUNK_SIZE)
+                chunk = new byte[PeerService.CHUNK_SIZE];
+            else chunk = new byte[readableBytes];
             file.read(chunk);
-            System.out.print(chunk);
+            System.out.println(Arrays.toString(chunk));
         }
-
-        //Add for
-        byte[] chunk = "so para nao dar erro".getBytes();
-
-
-        peer.requestChunkBackup(fileId,Integer.toString(replicationDegree),chunk);
     }
 
     @Override
