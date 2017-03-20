@@ -20,12 +20,11 @@ public class ClientInterface {
         }
 
         String peerAp = args[0];
-        String subPrototocol = args[1];
+        String protocolVersion = args[1];
         String operation = args[2];
 
         try {
             Registry registry = LocateRegistry.getRegistry();
-
             initiatorPeer  = (InitiatorInterface) registry.lookup(peerAp);
         } catch (Exception e){
             System.err.println("Client exception: " + e.toString());

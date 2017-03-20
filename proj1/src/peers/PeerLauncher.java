@@ -8,7 +8,7 @@ public class PeerLauncher {
         if(args.length != 9){
             System.out.println(args.length);
             throw new IllegalArgumentException("\nUsage: java PeerLauncher <peerId> <protocolVersion> <accessPoint>" +
-                    " <mcAddr> <mcPort> <mdbSddr> <mdbPort> <mdrAddr> <mdrPort>");
+                    " <mcAddr> <mcPort> <mdbAddr> <mdbPort> <mdrAddr> <mdrPort>");
         }
 
         String serverId = args[0];
