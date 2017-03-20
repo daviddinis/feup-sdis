@@ -80,7 +80,7 @@ public class PeerService {
             header = header.concat(field+" ");
         }
 
-        header.concat(CRLF + CRLF);
+        header = header.concat(CRLF + CRLF);
 
         return header;
     }
@@ -90,18 +90,19 @@ public class PeerService {
         String header = makeHeader("PUTCHUNK",protocolVersion,serverId,fileId,
                 Integer.toString(chunkNo),Integer.toString(replicationDegree));
 
-        String body = chunk.toString();
-
-        String message = header.concat(body);
-        System.out.println(message);
-        byte[] buf = message.getBytes();
+        byte[] headerBytes = header.getBytes();
+        byte[] buf = new byte[headerBytes.length + chunk.length];
+        System.arraycopy(headerBytes,0,buf,0,headerBytes.length);           //concatenate contents of header and body
+        System.arraycopy(chunk,0,buf,headerBytes.length,chunk.length);
 
         multiDataBackUpChannel.sendMessage(buf);
     }
 
-    public void messageHandler(byte[] data){
-
-        // Message Handler............
-      
+    public void messageHandler(byte[] buffer){
+        String data = new String(buffer, 0, buffer.length);
+        data.trim();
+        String[] dataPieces = data.split(CRLF+CRLF);
+        System.out.println("Header:");
+        System.out.println(dataPieces[0]);
     }
 }

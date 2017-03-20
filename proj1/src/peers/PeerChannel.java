@@ -31,12 +31,13 @@ public class PeerChannel {
 
             while (true) {
 
-                byte[] buf = new byte[500];
+                byte[] buf = new byte[PeerService.CHUNK_SIZE + 100];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
 
                 try {
                     socket.receive(packet);
-                    processMessage(packet);
+                    System.out.println("Packet length: " + packet.getLength());
+                    channelMessageHandler(packet);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -54,19 +55,11 @@ public class PeerChannel {
 
     }
 
-    public void processMessage(DatagramPacket packet) throws UnsupportedEncodingException {
+    public void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
         byte[] buffer = packet.getData();
-
-        String str = new String(buffer, 0, packet.getLength());
-
-        System.out.println(str);
-        System.out.println(str.length());
-
         Runnable task = () -> {
             peer.messageHandler(buffer);
         };
-
         new Thread(task).start();
     }
-
 }
