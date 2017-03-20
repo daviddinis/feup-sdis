@@ -43,17 +43,23 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         }
 
         System.out.println("New backup request for file " + filepath);
+        int chunkNo = 0;
 
         String fileId = getFileHash(filepath);
 
         while(file.available() > 0){
             int readableBytes = file.available();
             byte[] chunk;
+
             if(readableBytes > PeerService.CHUNK_SIZE)
                 chunk = new byte[PeerService.CHUNK_SIZE];
-            else chunk = new byte[readableBytes];
+            else
+                chunk = new byte[readableBytes];
+
             file.read(chunk);
-            System.out.println(Arrays.toString(chunk));
+            peer.requestChunkBackup(fileId,chunkNo,replicationDegree,chunk);
+            System.out.println(chunkNo);
+            chunkNo++;
         }
     }
 
