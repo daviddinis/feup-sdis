@@ -51,9 +51,9 @@ public class PeerService {
             e.printStackTrace();
         }
 
-        creatingAFolder(serverId);
-        creatingAFolder(serverId + "/MyFiles");
-        creatingAFolder(serverId + "/PeersFiles");
+        createDir(serverId);
+        createDir(serverId + "/MyFiles");
+        createDir(serverId + "/PeersFiles");
 
         multiChannel.receiveMessage();
         multiDataBackUpChannel.receiveMessage();
@@ -61,7 +61,7 @@ public class PeerService {
 
     }
 
-    public void creatingAFolder(String folderPath) {
+    public void createDir(String folderPath) {
 
         File file = new File(folderPath);
         boolean success = file.mkdir();
@@ -72,7 +72,7 @@ public class PeerService {
 
     }
 
-    private String getHeader(String... fields) {
+    private String makeHeader(String... fields) {
 
         String header = "";
 
@@ -85,20 +85,21 @@ public class PeerService {
         return header;
     }
 
-    public void requestChunkBackup(String fileId, String replicationDegree,byte[] chunk) throws IOException {
+    public void requestChunkBackup(String fileId, int chunkNo, int replicationDegree, byte[] chunk) throws IOException {
 
-        String header = getHeader("PUTCHUNK",protocolVersion,serverId,fileId,
-                "ChunkNO",replicationDegree);
+        String header = makeHeader("PUTCHUNK",protocolVersion,serverId,fileId,
+                Integer.toString(chunkNo),Integer.toString(replicationDegree));
 
-        System.out.println(header);
+        String body = chunk.toString();
 
-        byte[] buf = header.getBytes();
+        String message = header.concat(body);
+        System.out.println(message);
+        byte[] buf = message.getBytes();
 
         multiDataBackUpChannel.sendMessage(buf);
-
     }
 
-    public void messageReceiverHandler(byte[] data){
+    public void messageHandler(byte[] data){
 
         // Message Handler............
       

@@ -63,7 +63,7 @@ public class PeerChannel {
         System.out.println(str.length());
 
         Runnable task = () -> {
-            peer.messageReceiverHandler(buffer);
+            peer.messageHandler(buffer);
         };
 
         new Thread(task).start();
