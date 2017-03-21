@@ -17,9 +17,9 @@ public class PeerService {
     private String protocolVersion;
     private String serviceAccessPoint;
 
-    private PeerChannel multiChannel;
-    private PeerChannel multiDataBackUpChannel;
-    private PeerChannel multiDataRestoreChannel;
+    private PeerChannel controlChannel;
+    private PeerChannel dataBackupChannel;
+    private PeerChannel dataRestoreChannel;
 
     private String myFilesPath;
     private String chunksPath;
@@ -33,11 +33,11 @@ public class PeerService {
         this.protocolVersion = protocolVersion;
         this.serviceAccessPoint = serviceAccessPoint;
 
-        multiChannel = new PeerChannel(mcAddr,mcPort,this);
+        controlChannel = new PeerChannel(mcAddr,mcPort,this);
         System.out.println("Control Channel ready! Listening...");
-        multiDataBackUpChannel = new PeerChannel(mdbAddr, mdbPort,this);
+        dataBackupChannel = new PeerChannel(mdbAddr, mdbPort,this);
         System.out.println("Data Backup Channel ready! Listening...");
-        multiDataRestoreChannel = new PeerChannel(mdrAddr,mdrPort,this);
+        dataRestoreChannel = new PeerChannel(mdrAddr,mdrPort,this);
         System.out.println("Restore Channel ready! Listening...");
 
         System.out.println("Multicast channel addr: "+ mcAddr+" port: "+ mcPort);
@@ -64,9 +64,9 @@ public class PeerService {
         createDir(myFilesPath);
         createDir(chunksPath);
 
-        multiChannel.receiveMessage();
-        multiDataBackUpChannel.receiveMessage();
-        multiDataRestoreChannel.receiveMessage();
+        controlChannel.receiveMessage();
+        dataBackupChannel.receiveMessage();
+        dataRestoreChannel.receiveMessage();
 
     }
 
@@ -103,7 +103,7 @@ public class PeerService {
         System.arraycopy(headerBytes,0,buf,0,headerBytes.length);           //concatenate contents of header and body
         System.arraycopy(chunk,0,buf,headerBytes.length,chunk.length);
 
-        multiDataBackUpChannel.sendMessage(buf);
+        dataBackupChannel.sendMessage(buf);
     }
 
     public void messageHandler(byte[] buffer){
@@ -125,7 +125,7 @@ public class PeerService {
                 String chunkNo = messageHeader[4];
                 String replicationDegree = messageHeader[5];
                 String chunk = dataPieces[1];
-                backupChunk(fileID,chunkNo,replicationDegree,chunk);
+                backupChunk(protocolVersion, fileID,chunkNo,replicationDegree,chunk);
                 break;
             default:
                 //todo treat this??
@@ -133,12 +133,13 @@ public class PeerService {
         }
     }
 
-    private boolean backupChunk(String fileID, String chunkNo, String replicationDegree, String chunk){
+    private boolean backupChunk(String protocolVersion, String fileID, String chunkNo, String replicationDegree, String chunk){
         byte[] chunkData = chunk.getBytes();
         try {
             FileOutputStream chunkFile  = new FileOutputStream(chunksPath + "/" + fileID + "_" + chunkNo);
-//            System.out.println(chunksPath + "/" + fileID + "_" + chunkNo);
             chunkFile.write(chunkData);
+            String response = makeHeader("STORED",protocolVersion,serverId,fileID,chunkNo);
+            controlChannel.sendMessage(response.getBytes());
         } catch (IOException e) {
             System.err.println("chunk backup subprotocol :: Unable to backup chunk.");
             return false;
