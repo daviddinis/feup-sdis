@@ -4,12 +4,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PeerService {
 
@@ -29,14 +31,17 @@ public class PeerService {
 
     private PeerClientLink initiatorPeer;
 
-    private HashMap<String,int[][]> sentFilesPeers;     // stores a bidimensional array a in which a[i][j] stores the id of
-                                                        // the peer that stored chunk i
+    /**
+     * stores a bidimensional array a in which a[i][j] stores the id of
+     * the peer that stored chunk i
+     */
+    private ConcurrentHashMap<String,ArrayList<ArrayList<Integer>>> sentFilesPeers;
 
     /**
      * stores the desired replication degree for every file the
      * peer has stored or has chunks of
      */
-    private HashMap<String,Integer> fileReplicationDegrees;
+    private ConcurrentHashMap<String,Integer> fileReplicationDegrees;
 
     /**
      *  registers the chunk number of the chunks that are stored
@@ -44,7 +49,7 @@ public class PeerService {
      *  key = file_id
      *  value = array with the chunk numbers of the stored chunks
      */
-    private HashMap<String,ArrayList<Integer>> storedChunks;
+    private ConcurrentHashMap<String,ArrayList<Integer>> storedChunks;
 
     public PeerService(String serverId,String protocolVersion, String serviceAccessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
                        InetAddress mdrAddr,int mdrPort) throws IOException {
@@ -88,9 +93,9 @@ public class PeerService {
         dataBackupChannel.receiveMessage();
         dataRestoreChannel.receiveMessage();
 
-        sentFilesPeers = new HashMap<>();
-        fileReplicationDegrees = new HashMap<>();
-        storedChunks = new HashMap<>();
+        sentFilesPeers = new ConcurrentHashMap<>();
+        fileReplicationDegrees = new ConcurrentHashMap<>();
+        storedChunks = new ConcurrentHashMap<>();
 
     }
 
@@ -119,6 +124,9 @@ public class PeerService {
 
     public void registerFile(String fileID, int replicationDegree){
         fileReplicationDegrees.put(fileID,replicationDegree);
+        ArrayList fileList = sentFilesPeers.put(fileID,new ArrayList<>());
+        if (!fileList.add(new ArrayList<>()))
+            System.err.println("registerFile :: error adding new list");
     }
 
     public boolean registerChunk(String fileID, int chunkNo){
