@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Hashtable;
 
 public class PeerService {
 
@@ -25,6 +28,20 @@ public class PeerService {
     private String chunksPath;
 
     private PeerClientLink initiatorPeer;
+
+    private HashMap<String,int[][]> sentFilesPeers;     // stores a bidimensional array a in which a[i][j] stores the id of
+                                                        // the peer that stored chunk i
+
+    /**
+     * stores the desired replication degree for every file the
+     * peer has stored or has chunks of
+     */
+    private HashMap<String,Integer> fileReplicationDegrees;
+
+    /**
+     *  registers the chunks that are stored in the format <file-id>_<chunk-no>
+     */
+    private ArrayList<String> storedChunkList;
 
     public PeerService(String serverId,String protocolVersion, String serviceAccessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
                        InetAddress mdrAddr,int mdrPort) throws IOException {
@@ -68,6 +85,10 @@ public class PeerService {
         dataBackupChannel.receiveMessage();
         dataRestoreChannel.receiveMessage();
 
+        sentFilesPeers = new HashMap<>();
+        fileReplicationDegrees = new HashMap<>();
+        storedChunkList = new ArrayList<>();
+
     }
 
     public void createDir(String folderPath) {
@@ -91,6 +112,10 @@ public class PeerService {
         header = header.concat(CRLF + CRLF);
 
         return header;
+    }
+
+    public void registerFile(String fileID, int replicationDegree){
+        fileReplicationDegrees.put(fileID,replicationDegree);
     }
 
     public void requestChunkBackup(String fileId, int chunkNo, int replicationDegree, byte[] chunk) throws IOException {
@@ -125,7 +150,7 @@ public class PeerService {
                 String chunkNo = messageHeader[4];
                 String replicationDegree = messageHeader[5];
                 String chunk = dataPieces[1];
-                backupChunk(protocolVersion, fileID,chunkNo,replicationDegree,chunk);
+                storeChunk(protocolVersion, fileID,chunkNo,replicationDegree,chunk);
                 break;
             default:
                 //todo treat this??
@@ -133,7 +158,7 @@ public class PeerService {
         }
     }
 
-    private boolean backupChunk(String protocolVersion, String fileID, String chunkNo, String replicationDegree, String chunk){
+    private boolean storeChunk(String protocolVersion, String fileID, String chunkNo, String replicationDegree, String chunk){
         byte[] chunkData = chunk.getBytes();
         try {
             FileOutputStream chunkFile  = new FileOutputStream(chunksPath + "/" + fileID + "_" + chunkNo);
