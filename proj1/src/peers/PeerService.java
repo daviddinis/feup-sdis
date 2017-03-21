@@ -39,9 +39,12 @@ public class PeerService {
     private HashMap<String,Integer> fileReplicationDegrees;
 
     /**
-     *  registers the chunks that are stored in the format <file-id>_<chunk-no>
+     *  registers the chunk number of the chunks that are stored
+     *  for each file
+     *  key = file_id
+     *  value = array with the chunk numbers of the stored chunks
      */
-    private ArrayList<String> storedChunkList;
+    private HashMap<String,ArrayList<Integer>> storedChunks;
 
     public PeerService(String serverId,String protocolVersion, String serviceAccessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
                        InetAddress mdrAddr,int mdrPort) throws IOException {
@@ -87,7 +90,7 @@ public class PeerService {
 
         sentFilesPeers = new HashMap<>();
         fileReplicationDegrees = new HashMap<>();
-        storedChunkList = new ArrayList<>();
+        storedChunks = new HashMap<>();
 
     }
 
@@ -116,6 +119,16 @@ public class PeerService {
 
     public void registerFile(String fileID, int replicationDegree){
         fileReplicationDegrees.put(fileID,replicationDegree);
+    }
+
+    public boolean registerChunk(String fileID, int chunkNo){
+        ArrayList fileChunks = storedChunks.get(fileID);
+        for (int i = 0; i < fileChunks.size(); i++) {
+            if((Integer) fileChunks.get(i) == chunkNo)
+                return false;
+        }
+        fileChunks.add(chunkNo);
+        return true;
     }
 
     public void requestChunkBackup(String fileId, int chunkNo, int replicationDegree, byte[] chunk) throws IOException {
@@ -161,8 +174,11 @@ public class PeerService {
     private boolean storeChunk(String protocolVersion, String fileID, String chunkNo, String replicationDegree, String chunk){
         byte[] chunkData = chunk.getBytes();
         try {
-            FileOutputStream chunkFile  = new FileOutputStream(chunksPath + "/" + fileID + "_" + chunkNo);
-            chunkFile.write(chunkData);
+            if(registerChunk(fileID,Integer.parseInt(chunkNo))) {
+                String filename = fileID + "_" + chunkNo;
+                FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
+                chunkFile.write(chunkData);
+            }
             String response = makeHeader("STORED",protocolVersion,serverId,fileID,chunkNo);
             controlChannel.sendMessage(response.getBytes());
         } catch (IOException e) {
