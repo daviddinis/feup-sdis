@@ -1,6 +1,8 @@
 package peers;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
@@ -18,6 +20,9 @@ public class PeerService {
     private PeerChannel multiChannel;
     private PeerChannel multiDataBackUpChannel;
     private PeerChannel multiDataRestoreChannel;
+
+    private String myFilesPath;
+    private String chunksPath;
 
     private PeerClientLink initiatorPeer;
 
@@ -51,9 +56,13 @@ public class PeerService {
             e.printStackTrace();
         }
 
+
+        chunksPath = serverId + "/chunks";
+        myFilesPath = serverId + "/my_files";
+
         createDir(serverId);
-        createDir(serverId + "/MyFiles");
-        createDir(serverId + "/PeersFiles");
+        createDir(myFilesPath);
+        createDir(chunksPath);
 
         multiChannel.receiveMessage();
         multiDataBackUpChannel.receiveMessage();
@@ -64,9 +73,8 @@ public class PeerService {
     public void createDir(String folderPath) {
 
         File file = new File(folderPath);
-        boolean success = file.mkdir();
 
-        if(success){
+        if(file.mkdir()){
             System.out.println("Directory: " + folderPath + " created");
         }
 
@@ -100,9 +108,41 @@ public class PeerService {
 
     public void messageHandler(byte[] buffer){
         String data = new String(buffer, 0, buffer.length);
-        data.trim();
+        data = data.trim();
         String[] dataPieces = data.split(CRLF+CRLF);
-        System.out.println("Header:");
-        System.out.println(dataPieces[0]);
+        String messageHeader[] = dataPieces[0].split(" ");
+
+        //check message type
+        String messageType = messageHeader[0];
+        String protocolVersion = messageHeader[1];
+
+        switch (messageType){
+            case "PUTCHUNK":
+                String senderID = messageHeader[2];
+                if(senderID.equals(this.serverId))  // backup request sent from this peer
+                    break;                          // ignore
+                String fileID = messageHeader[3];
+                String chunkNo = messageHeader[4];
+                String replicationDegree = messageHeader[5];
+                String chunk = dataPieces[1];
+                backupChunk(fileID,chunkNo,replicationDegree,chunk);
+                break;
+            default:
+                //todo treat this??
+                break;
+        }
+    }
+
+    private boolean backupChunk(String fileID, String chunkNo, String replicationDegree, String chunk){
+        byte[] chunkData = chunk.getBytes();
+        try {
+            FileOutputStream chunkFile  = new FileOutputStream(chunksPath + "/" + fileID + "_" + chunkNo);
+//            System.out.println(chunksPath + "/" + fileID + "_" + chunkNo);
+            chunkFile.write(chunkData);
+        } catch (IOException e) {
+            System.err.println("chunk backup subprotocol :: Unable to backup chunk.");
+            return false;
+        }
+        return true;
     }
 }
