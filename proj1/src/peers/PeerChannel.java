@@ -36,7 +36,6 @@ public class PeerChannel {
 
                 try {
                     socket.receive(packet);
-                    System.out.println("Packet length: " + packet.getLength());
                     channelMessageHandler(packet);
                 } catch (IOException e) {
                     e.printStackTrace();

@@ -47,6 +47,8 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         String fileId = getFileHash(filepath);
 
+        peer.registerFile(fileId, replicationDegree);
+
         while(file.available() > 0){
             int readableBytes = file.available();
             byte[] chunk;
