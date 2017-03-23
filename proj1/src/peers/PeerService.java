@@ -8,9 +8,11 @@ import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PeerService {
@@ -32,10 +34,12 @@ public class PeerService {
     private PeerClientLink initiatorPeer;
 
     /**
-     * stores a bidimensional array a in which a[i][j] stores the id of
-     * the peer that stored chunk i
+     * registers the peers that have stored chunks
+     * key = <fileID>_<ChunkNo>
+     * value = array with the peer id of the peers that have stored that chunk
+     *
      */
-    private ConcurrentHashMap<String,ArrayList<ArrayList<Integer>>> sentFilesPeers;
+    private ConcurrentHashMap<String,ArrayList<Integer>> chunkMap;
 
     /**
      * stores the desired replication degree for every file the
@@ -44,8 +48,7 @@ public class PeerService {
     private ConcurrentHashMap<String,Integer> fileReplicationDegrees;
 
     /**
-     *  registers the chunk number of the chunks that are stored
-     *  for each file
+     *  registers the chunk number of the stored chunks
      *  key = file_id
      *  value = array with the chunk numbers of the stored chunks
      */
@@ -93,7 +96,7 @@ public class PeerService {
         dataBackupChannel.receiveMessage();
         dataRestoreChannel.receiveMessage();
 
-        sentFilesPeers = new ConcurrentHashMap<>();
+        chunkMap = new ConcurrentHashMap<>();
         fileReplicationDegrees = new ConcurrentHashMap<>();
         storedChunks = new ConcurrentHashMap<>();
 
@@ -122,34 +125,91 @@ public class PeerService {
         return header;
     }
 
+    /**
+     * Places a file in the replication degree hash map and
+     * initializes a list in the peer list
+     * @param fileID file ID for the sent file
+     * @param replicationDegree desired replication degree for the file
+     */
     public void registerFile(String fileID, int replicationDegree){
+        if(fileReplicationDegrees.get(fileID) != null){
+            fileReplicationDegrees.remove(fileID);
+        }
+
         fileReplicationDegrees.put(fileID,replicationDegree);
-        ArrayList fileList = sentFilesPeers.put(fileID,new ArrayList<>());
-        if (!fileList.add(new ArrayList<>()))
-            System.err.println("registerFile :: error adding new list");
     }
 
-    public boolean registerChunk(String fileID, int chunkNo){
-        ArrayList fileChunks = storedChunks.get(fileID);
-        for (int i = 0; i < fileChunks.size(); i++) {
-            if((Integer) fileChunks.get(i) == chunkNo)
+    /**
+     * Registers a chunk in the storedChunks HashMap
+     * checks if the file is already registered, if not, it is registered
+     * checks if the chunk is already stored, if not, it is stored
+     *
+     * @param fileID
+     * @param chunkNo
+     * @param replicationDegree
+     * @return
+     */
+    private boolean registerChunk(String fileID, int chunkNo, int replicationDegree){
+        ArrayList<Integer> fileChunks = storedChunks.get(fileID);
+        if (fileChunks == null){ // no chunks registered for this file
+            registerFile(fileID, replicationDegree);
+            fileChunks = new ArrayList<>();
+            fileChunks.add(chunkNo);
+            storedChunks.put(fileID,fileChunks);
+            return true;
+        }
+        for (Integer fileChunkNo : fileChunks) {
+            if (fileChunkNo == chunkNo)
                 return false;
         }
         fileChunks.add(chunkNo);
         return true;
     }
 
+    private int getReplicationDegree(String fileID, String chunkNo){
+        ArrayList chunkPeers = chunkMap.get(fileID+'_'+chunkNo);
+        if(chunkPeers == null)
+            return -1;
+        else return chunkPeers.size();
+    }
+
     public void requestChunkBackup(String fileId, int chunkNo, int replicationDegree, byte[] chunk) throws IOException {
 
-        String header = makeHeader("PUTCHUNK",protocolVersion,serverId,fileId,
-                Integer.toString(chunkNo),Integer.toString(replicationDegree));
+        Runnable task = () -> {
+            int counter = 1;
 
-        byte[] headerBytes = header.getBytes();
-        byte[] buf = new byte[headerBytes.length + chunk.length];
-        System.arraycopy(headerBytes,0,buf,0,headerBytes.length);           //concatenate contents of header and body
-        System.arraycopy(chunk,0,buf,headerBytes.length,chunk.length);
+            do {
+                String header = makeHeader("PUTCHUNK", protocolVersion, serverId, fileId,
+                        Integer.toString(chunkNo), Integer.toString(replicationDegree));
 
-        dataBackupChannel.sendMessage(buf);
+                byte[] headerBytes = header.getBytes();
+                byte[] buf = new byte[headerBytes.length + chunk.length];
+                System.arraycopy(headerBytes, 0, buf, 0, headerBytes.length);           //concatenate contents of header and body
+                System.arraycopy(chunk, 0, buf, headerBytes.length, chunk.length);
+
+                try {
+                    dataBackupChannel.sendMessage(buf);
+                } catch (IOException e) {
+                    //TODO treat
+                }
+
+                // wait and process response
+                try {
+                    Thread.sleep(1000 * counter);
+                } catch (InterruptedException e) {
+                    //TODO treat
+                }
+                counter++;
+            } while(counter <= 5 && getReplicationDegree(fileId,Integer.toString(chunkNo)) < replicationDegree);
+            if(counter > 5) {
+                System.out.println("Timed out!");
+                System.out.println(getReplicationDegree(fileId,Integer.toString(chunkNo)));
+            }
+            else{
+                System.out.println("Success!");
+            }
+        };
+        new Thread(task).start();
     }
 
     public void messageHandler(byte[] buffer){
@@ -163,36 +223,124 @@ public class PeerService {
         String protocolVersion = messageHeader[1];
 
         switch (messageType){
-            case "PUTCHUNK":
+            case "PUTCHUNK": {
+                if(messageHeader.length < 6){
+                    System.out.println(messageHeader.length);
+                    System.err.println("Not enough fields on header for PUTCHUNK");
+                    break;
+                }
                 String senderID = messageHeader[2];
-                if(senderID.equals(this.serverId))  // backup request sent from this peer
-                    break;                          // ignore
+                if (senderID.equals(this.serverId))  // backup request sent from this peer
+                    break;                           // ignore
+                printHeader(dataPieces[0], false);
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
                 String replicationDegree = messageHeader[5];
                 String chunk = dataPieces[1];
-                storeChunk(protocolVersion, fileID,chunkNo,replicationDegree,chunk);
+                storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk);
                 break;
-            default:
+            }
+            case "STORED": {
+                if(messageHeader.length < 5){
+                    System.err.println("Not enough fields on header for STORED");
+                    break;
+                }
+                String senderID = messageHeader[2];
+                if (senderID.equals(this.serverId))  // message sent from this peer
+                    break;
+                printHeader(dataPieces[0],false);
+                String fileID = messageHeader[3];
+                String chunkNo = messageHeader[4];
+                registerStorage(protocolVersion,senderID,fileID,chunkNo);
+                break;
+            }
+            default: {
                 //todo treat this??
                 break;
+            }
         }
     }
 
+    /**
+     * Function called when the peer receives a PUTCHUNK message from another peer
+     * registers the file and the chunk
+     *
+     * @param protocolVersion version of the Chunk Backup Subprotocol
+     * @param fileID file ID of the file the chunk belongs to
+     * @param chunkNo
+     * @param replicationDegree desired file replication degree
+     * @param chunk chunk data
+     * @return true if the chunk was registered and stored
+     */
     private boolean storeChunk(String protocolVersion, String fileID, String chunkNo, String replicationDegree, String chunk){
+        if(protocolVersion == null || fileID == null || chunk == null
+                || replicationDegree == null || replicationDegree == null
+                || chunkNo == null || chunk == null)
+            return false;
+
         byte[] chunkData = chunk.getBytes();
         try {
-            if(registerChunk(fileID,Integer.parseInt(chunkNo))) {
+            // Check if the chunk is already stored
+            if(registerChunk(fileID,Integer.parseInt(chunkNo), Integer.parseInt(replicationDegree))) {
                 String filename = fileID + "_" + chunkNo;
                 FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
                 chunkFile.write(chunkData);
             }
+            Random random = new Random(System.currentTimeMillis());
+            long waitTime = random.nextInt(400);
+            Thread.sleep(waitTime);
             String response = makeHeader("STORED",protocolVersion,serverId,fileID,chunkNo);
+            registerStorage(protocolVersion,this.serverId,fileID,chunkNo);
             controlChannel.sendMessage(response.getBytes());
         } catch (IOException e) {
             System.err.println("chunk backup subprotocol :: Unable to backup chunk.");
             return false;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
         return true;
     }
+
+    /**
+     * Called when a peer receives a STORED message from another peer
+     * It updates the peer's chunkMap to reflect the perceived
+     * replication degree of the chunk
+     * @param protocolVersion
+     * @param senderID
+     * @param fileID
+     * @param chunkNo
+     */
+    private boolean registerStorage(String protocolVersion, String senderID, String fileID, String chunkNo){
+        if(protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
+            return false;
+
+        ArrayList<Integer> chunkPeers = chunkMap.get(fileID+'_'+chunkNo);
+        int sender = Integer.parseInt(senderID);
+        if(chunkPeers == null){
+            chunkPeers = new ArrayList<>();
+            chunkPeers.add(sender);
+            chunkMap.put(fileID+'_'+chunkNo,chunkPeers);
+        } else {
+            for (int i = 0; i < chunkPeers.size() ; i++) {
+                if(chunkPeers.get(i) == sender) {   // peer was already registered
+                    System.out.println("Here");
+                    return true;
+                }
+            }
+            chunkPeers.add(sender);
+        }
+
+        return true;
+    }
+
+    /**
+     * Prints the header fields
+     * @param header the header string
+     * @param sent true if the message is being sent
+     */
+    private void printHeader(String header, boolean sent){
+        System.out.println("Message " + (sent ? "sent" : "received"));
+        System.out.println(header);
+    }
+
 }
