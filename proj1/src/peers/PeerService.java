@@ -30,6 +30,7 @@ public class PeerService {
 
     private String myFilesPath;
     private String chunksPath;
+    private String restoredFilesPath;
 
     private PeerClientLink initiatorPeer;
 
@@ -46,6 +47,11 @@ public class PeerService {
      * peer has stored or has chunks of
      */
     private ConcurrentHashMap<String,Integer> fileReplicationDegrees;
+
+    /**
+     * stores the number of chunks every file has
+     */
+    private ConcurrentHashMap<String,Integer> fileChunkNum;
 
     /**
      *  registers the chunk number of the stored chunks
@@ -87,10 +93,12 @@ public class PeerService {
 
         chunksPath = serverId + "/chunks";
         myFilesPath = serverId + "/my_files";
+        restoredFilesPath = serverId + "/restored_files";
 
         createDir(serverId);
         createDir(myFilesPath);
         createDir(chunksPath);
+        createDir(restoredFilesPath);
 
         controlChannel.receiveMessage();
         dataBackupChannel.receiveMessage();
@@ -98,8 +106,8 @@ public class PeerService {
 
         chunkMap = new ConcurrentHashMap<>();
         fileReplicationDegrees = new ConcurrentHashMap<>();
+        fileChunkNum = new ConcurrentHashMap<>();
         storedChunks = new ConcurrentHashMap<>();
-
     }
 
     public void createDir(String folderPath) {
@@ -164,6 +172,18 @@ public class PeerService {
         }
         fileChunks.add(chunkNo);
         return true;
+    }
+
+    public boolean registerNumChunks(String fileID, int numChunks){
+        if(fileChunkNum.get(fileID) != null)
+            return false;
+
+        fileChunkNum.put(fileID,numChunks);
+        return true;
+    }
+
+    public int getNumChunks(String fileID){
+        return fileChunkNum.get(fileID);
     }
 
     private int getReplicationDegree(String fileID, String chunkNo){

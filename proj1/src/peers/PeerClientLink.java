@@ -18,6 +18,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class PeerClientLink extends UnicastRemoteObject implements InitiatorInterface {
@@ -60,14 +61,23 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
             file.read(chunk);
             peer.requestChunkBackup(fileId,chunkNo,replicationDegree,chunk);
-            System.out.println(chunkNo);
             chunkNo++;
         }
+        peer.registerNumChunks(fileId,chunkNo);
     }
 
     @Override
-    public void restore(String pathname) throws RemoteException {
+    public void restore(String filepath) throws IOException {
+        if(filepath == null)
+            throw new IllegalArgumentException("Invalid argument for restore");
 
+        String fileID = getFileHash(filepath);
+        int nChunks = peer.getNumChunks(fileID);
+        for(int chunkNo = 0; chunkNo < nChunks; chunkNo++){
+            requestChunkRestore(fileID,chunkNo);
+        }
+        //request chunk restore
+        //join all chunks into a file
     }
 
     @Override
