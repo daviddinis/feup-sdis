@@ -1,4 +1,4 @@
-if [ "$#" -lt 3 ]; then
+if [ "$#" -lt 1 ]; then
 	echo "Invalid number of arguments. Usage:"
 	echo "sh client.sh operation> [<operand1> [<operand2>]]"
 	exit 1;

@@ -1,5 +1,7 @@
 package peers;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -19,6 +21,7 @@ public class PeerService {
 
     public static final String CRLF = "\r\n";
     public static final int CHUNK_SIZE = 64000;
+    public static final int ERROR = -1;
 
     private String serverId;
     private String protocolVersion;
@@ -59,6 +62,13 @@ public class PeerService {
      *  value = array with the chunk numbers of the stored chunks
      */
     private ConcurrentHashMap<String,ArrayList<Integer>> storedChunks;
+
+    /**
+     * registers if a file was already restored
+     * key = file_id
+     * value = a boolean that is true when a file was already restored and false otherwise
+     */
+    private ConcurrentHashMap<String,Boolean> restoredChunks;
 
     public PeerService(String serverId,String protocolVersion, String serviceAccessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
                        InetAddress mdrAddr,int mdrPort) throws IOException {
@@ -108,6 +118,7 @@ public class PeerService {
         fileReplicationDegrees = new ConcurrentHashMap<>();
         fileChunkNum = new ConcurrentHashMap<>();
         storedChunks = new ConcurrentHashMap<>();
+        restoredChunks = new ConcurrentHashMap<>();
     }
 
     public void createDir(String folderPath) {
@@ -183,7 +194,13 @@ public class PeerService {
     }
 
     public int getNumChunks(String fileID){
-        return fileChunkNum.get(fileID);
+
+        Object ChunksNo = fileChunkNum.get(fileID);
+
+        if(ChunksNo == null)
+            return ERROR;
+
+        return (int)ChunksNo;
     }
 
     private int getReplicationDegree(String fileID, String chunkNo){
@@ -274,6 +291,13 @@ public class PeerService {
                 registerStorage(protocolVersion,senderID,fileID,chunkNo);
                 break;
             }
+            case "GETCHUNK": {
+                if(messageHeader.length < 5){
+                    System.err.println("Not enough fields on header for GETCHUNK");
+                    break;
+                }
+                String senderID = messageHeader[2];
+            }
             default: {
                 //todo treat this??
                 break;
@@ -363,4 +387,43 @@ public class PeerService {
         System.out.println(header);
     }
 
+    /**
+     * Creates the message "GETCHUNK" and send its
+     * @param fileId id of the file to be restored
+     * @param chunkNo Chunk number
+     */
+    public void requestChunkRestore(String fileId, int chunkNo) {
+
+        Runnable task = () -> {
+
+            String header = makeHeader("GETCHUNK", protocolVersion, serverId, fileId,
+                    Integer.toString(chunkNo));
+
+            byte[] headerBytes = header.getBytes();
+
+            try {
+                controlChannel.sendMessage(headerBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        };
+        new Thread(task).start();
+    }
+
+    /**
+     * Adds a file_id to the restore hash map
+     * @param fileId id of the file to be added
+     * @return true if the file was added false otherwise
+     */
+    public boolean addToRestoredHashMap(String fileId){
+
+        if (restoredChunks.get(fileId) != null) {
+            return false;
+        }
+
+        restoredChunks.put(fileId,false);
+
+        return true;
+    }
 }
