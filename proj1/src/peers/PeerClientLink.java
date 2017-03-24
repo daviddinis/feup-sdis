@@ -72,6 +72,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             throw new IllegalArgumentException("Invalid argument for restore");
 
         String fileID = getFileHash(filepath);
+        // colocar no hashmap de ficheiros requisitados
         int nChunks = peer.getNumChunks(fileID);
         for(int chunkNo = 0; chunkNo < nChunks; chunkNo++){
             requestChunkRestore(fileID,chunkNo);
