@@ -2,10 +2,7 @@ package peers;
 
 import com.sun.org.apache.xpath.internal.operations.Bool;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
@@ -87,6 +84,8 @@ public class PeerService {
         System.out.println("Multicast channel addr: "+ mcAddr+" port: "+ mcPort);
         System.out.println("Multicast data backup addr: "+ mdbAddr+" port: "+ mdbPort);
         System.out.println("Multicast data restore addr: "+ mdrAddr+" port: "+ mdrPort);
+
+        System.out.println("Server ID: " + serverId);
 
         initiatorPeer = new PeerClientLink(this);
 
@@ -221,7 +220,9 @@ public class PeerService {
 
                 byte[] headerBytes = header.getBytes();
                 byte[] buf = new byte[headerBytes.length + chunk.length];
-                System.arraycopy(headerBytes, 0, buf, 0, headerBytes.length);           //concatenate contents of header and body
+
+                //concatenate contents of header and body
+                System.arraycopy(headerBytes, 0, buf, 0, headerBytes.length);
                 System.arraycopy(chunk, 0, buf, headerBytes.length, chunk.length);
 
                 try {
@@ -297,6 +298,18 @@ public class PeerService {
                     break;
                 }
                 String senderID = messageHeader[2];
+                if (senderID.equals(this.serverId))  // message sent from this peer
+                    break;
+                printHeader(dataPieces[0], false);
+
+                String fileID = messageHeader[3];
+                String chunkNo = messageHeader[4];
+
+                // if the file doesn't make part of the filesystem, the peer discard the message
+                if(!verifyingChunk(fileID,Integer.parseInt(chunkNo))){
+                    break;
+                }
+                putChunk(protocolVersion,senderID,fileID,chunkNo);
             }
             default: {
                 //todo treat this??
@@ -311,7 +324,7 @@ public class PeerService {
      *
      * @param protocolVersion version of the Chunk Backup Subprotocol
      * @param fileID file ID of the file the chunk belongs to
-     * @param chunkNo
+     * @param chunkNo chunk number
      * @param replicationDegree desired file replication degree
      * @param chunk chunk data
      * @return true if the chunk was registered and stored
@@ -423,6 +436,68 @@ public class PeerService {
         }
 
         restoredChunks.put(fileId,false);
+
+        return true;
+    }
+
+    /**
+     * Verifies if a given chunk of a given file is stored on the peer
+     * @param fileID id of the file
+     * @param chunkNo Number of the chunk to be searched
+     * @return true if the chunk exists on the filesystem, false otherwise
+     */
+    public boolean verifyingChunk(String fileID, Integer chunkNo){
+
+        ArrayList<Integer> fileStoredChunks;
+
+        fileStoredChunks=storedChunks.get(fileID);
+
+        if(fileStoredChunks == null || !fileStoredChunks.contains(chunkNo)){
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean putChunk(String protocolVersion, String senderID, String fileID, String chunkNo) {
+
+        if(protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
+            return false;
+
+        String filename = fileID + "_" + chunkNo;
+        FileInputStream chunkFile = null;
+        try {
+            chunkFile = new FileInputStream(chunksPath + "/" + filename);
+        } catch (FileNotFoundException e) {
+            //TODO treat this
+            e.printStackTrace();
+        }
+
+        byte[] chunkData = new byte[PeerService.CHUNK_SIZE];
+
+        try {
+            chunkFile.read(chunkData);
+        } catch (IOException e) {
+            //TODO treat this
+            e.printStackTrace();
+        }
+
+        String header = makeHeader("CHUNK",protocolVersion,serverId,fileID,chunkNo);
+        byte[] headerBytes = header.getBytes();
+
+        byte[] buf = new byte[headerBytes.length + chunkData.length];
+
+        //concatenate contents of header and body
+        System.arraycopy(headerBytes, 0, buf, 0, headerBytes.length);
+        System.arraycopy(chunkData, 0, buf, headerBytes.length, chunkData.length);
+
+        try {
+            dataRestoreChannel.sendMessage(buf);
+            printHeader(header,true);
+        } catch (IOException e) {
+            //TODO treat this
+            e.printStackTrace();
+        }
 
         return true;
     }
