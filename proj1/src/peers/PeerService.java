@@ -280,7 +280,6 @@ public class PeerService {
         switch (messageType){
             case "PUTCHUNK": {
                 if(messageHeader.length < 6){
-                    System.out.println(messageHeader.length);
                     System.err.println("Not enough fields on header for PUTCHUNK");
                     break;
                 }
