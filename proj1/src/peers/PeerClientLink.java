@@ -88,6 +88,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         }
 
         //join all chunks into a file
+        peer.writeRestoredChunks(filepath,fileID);
     }
 
     @Override
