@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.InetAddress;
+import java.nio.file.NoSuchFileException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.sql.Time;
@@ -222,6 +223,10 @@ public class PeerService {
         String messageType = messageHeader[0];
         String protocolVersion = messageHeader[1];
 
+        String senderID = messageHeader[2];
+        if (senderID.equals(this.serverId))// backup request sent from this peer, ignore
+            return;
+
         switch (messageType){
             case "PUTCHUNK": {
                 if(messageHeader.length < 6){
@@ -229,9 +234,6 @@ public class PeerService {
                     System.err.println("Not enough fields on header for PUTCHUNK");
                     break;
                 }
-                String senderID = messageHeader[2];
-                if (senderID.equals(this.serverId))  // backup request sent from this peer
-                    break;                           // ignore
                 printHeader(dataPieces[0], false);
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
@@ -245,13 +247,20 @@ public class PeerService {
                     System.err.println("Not enough fields on header for STORED");
                     break;
                 }
-                String senderID = messageHeader[2];
-                if (senderID.equals(this.serverId))  // message sent from this peer
-                    break;
                 printHeader(dataPieces[0],false);
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
                 registerStorage(protocolVersion,senderID,fileID,chunkNo);
+                break;
+            }
+            case "DELETE": {
+                if(messageHeader.length < 4){
+                    System.err.println("Not enough fields on header for DELETE");
+                    break;
+                }
+                printHeader(dataPieces[0],false);
+                String fileID = messageHeader[3];
+                deleteFile(fileID);
                 break;
             }
             default: {
@@ -333,6 +342,28 @@ public class PeerService {
         return true;
     }
 
+    public void requestFileDeletion(String fileID){
+        String message = makeHeader("DELETE",protocolVersion,serverId,fileID);
+        try {
+            controlChannel.sendMessage(message.getBytes());
+            printHeader(message,true);
+        }catch (IOException e){
+            System.err.println("Failed to send message.");
+        }
+    }
+
+    public void deleteFile(String fileID){
+        ArrayList<Integer> fileChunks = storedChunks.get(fileID);
+        if(fileChunks == null)  // peer has no chunks belonging to this file
+            return;
+
+        for (int i = 0; i < fileChunks.size() ; i++) {
+            String chunkPath = chunksPath + '/' + fileID + '_' + Integer.toString(fileChunks.get(i));
+            File chunk = new File(chunkPath);
+            chunk.delete();
+        }
+    }
+
     /**
      * Prints the header fields
      * @param header the header string
@@ -342,5 +373,4 @@ public class PeerService {
         System.out.println("Message " + (sent ? "sent" : "received"));
         System.out.println(header);
     }
-
 }

@@ -71,8 +71,11 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
     }
 
     @Override
-    public void delete(String pathname) throws RemoteException {
-
+    public void delete(String filepath) throws IOException {
+        if(filepath == null)
+            throw new IllegalArgumentException("Invalid arguments for delete");
+        String fileID = getFileHash(filepath);
+        peer.requestFileDeletion(fileID);
     }
 
     @Override
