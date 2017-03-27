@@ -1,16 +1,10 @@
 package peers;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.sql.Time;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,6 +13,7 @@ public class PeerService {
     public static final String CRLF = "\r\n";
     public static final int CHUNK_SIZE = 64000;
     public static final int ERROR = -1;
+    public static final int NOTHING_WRITTEN = -1;
 
     private String serverId;
     private String protocolVersion;
@@ -55,17 +50,24 @@ public class PeerService {
 
     /**
      *  registers the chunk number of the stored chunks
-     *  key = file_id
+     *  key = <fileID>
      *  value = array with the chunk numbers of the stored chunks
      */
     private ConcurrentHashMap<String,ArrayList<Integer>> storedChunks;
 
     /**
-     * registers if a file was already restored
-     * key = file_id
-     * value = a boolean that is true when a file was already restored and false otherwise
+     * registers the number of chunks written to a file
+     * key = <fileID>_<ChunkNo>
+     * value = a integer that is the last chunk number that was written on the file
      */
-    private ConcurrentHashMap<String,Boolean> restoredChunks;
+    private ConcurrentHashMap<String,Integer> atualNumberOfrestoredChunks;
+
+    /**
+     * Stores chunks when they aren't written to the file
+     * key = <fileID>
+     * value = byte array
+     */
+    private ConcurrentHashMap<String,byte[]> restoredChunksToBeWrittenOnFile;
 
     public PeerService(String serverId,String protocolVersion, String serviceAccessPoint,InetAddress mcAddr,int mcPort,InetAddress mdbAddr,int mdbPort,
                        InetAddress mdrAddr,int mdrPort) throws IOException {
@@ -117,7 +119,8 @@ public class PeerService {
         fileReplicationDegrees = new ConcurrentHashMap<>();
         fileChunkNum = new ConcurrentHashMap<>();
         storedChunks = new ConcurrentHashMap<>();
-        restoredChunks = new ConcurrentHashMap<>();
+        atualNumberOfrestoredChunks = new ConcurrentHashMap<>();
+        restoredChunksToBeWrittenOnFile = new ConcurrentHashMap<>();
     }
 
     public void createDir(String folderPath) {
@@ -311,6 +314,26 @@ public class PeerService {
                 }
                 putChunk(protocolVersion,senderID,fileID,chunkNo);
             }
+            case "CHUNK": {
+                if(messageHeader.length < 5){
+                    System.err.println("Not enough fields on header for GETCHUNK");
+                    break;
+                }
+                String senderID = messageHeader[2];
+                if (senderID.equals(this.serverId))  // message sent from this peer
+                    break;
+                printHeader(dataPieces[0], false);
+
+                String fileID = messageHeader[3];
+
+                if(!isAFileToRestore(fileID))
+                    break;
+
+                String chunkNo = messageHeader[4];
+                String chunk = dataPieces[1];
+
+                storeRestoredChunk(fileID,Integer.parseInt(chunkNo),chunk);
+            }
             default: {
                 //todo treat this??
                 break;
@@ -431,11 +454,11 @@ public class PeerService {
      */
     public boolean addToRestoredHashMap(String fileId){
 
-        if (restoredChunks.get(fileId) != null) {
+        if (atualNumberOfrestoredChunks.get(fileId) != null) {
             return false;
         }
 
-        restoredChunks.put(fileId,false);
+        atualNumberOfrestoredChunks.put(fileId,NOTHING_WRITTEN);
 
         return true;
     }
@@ -496,6 +519,74 @@ public class PeerService {
             printHeader(header,true);
         } catch (IOException e) {
             //TODO treat this
+            e.printStackTrace();
+        }
+
+        //TODO random time uniformly distributed
+
+        return true;
+    }
+
+    /**
+     * Verifies if atualNumberOfrestoredChunks contains fileID
+     * @param fileID id of the file
+     * @return true if atualNumberOfrestoredChunks contains fileID, false otherwise
+     */
+    private boolean isAFileToRestore(String fileID) {
+
+        if(atualNumberOfrestoredChunks.get(fileID) == null)
+            return false;
+
+        return true;
+    }
+
+    /**
+     * Store a restored chunk on the destination file
+     * @param fileID id of the file
+     * @param chunkNo number of the chunk
+     * @return true if the chunk was written to the file
+     */
+    private boolean storeRestoredChunk(String fileID, int chunkNo, String chunk) {
+
+        int lastInsertedChunkNo = atualNumberOfrestoredChunks.get(fileID);
+        int i;
+        byte[] chunkData = chunk.getBytes();
+
+        if(chunkNo == lastInsertedChunkNo + 1){
+            writeToFile(fileID,chunkNo,chunkData);
+            atualNumberOfrestoredChunks.put(fileID,chunkNo);
+            i = chunkNo + 1;
+
+            while(restoredChunksToBeWrittenOnFile.containsKey(fileID + "_" + i)){
+                chunkData = restoredChunksToBeWrittenOnFile.get((fileID+ "_" + i));
+                writeToFile(fileID,i,chunkData);
+                atualNumberOfrestoredChunks.put(fileID,i); //updating chunk number
+
+                restoredChunksToBeWrittenOnFile.remove((fileID+ "_" + i)); //removing chunk
+
+                i++;
+            }
+        }
+        else if(chunkNo > lastInsertedChunkNo + 1){
+            restoredChunksToBeWrittenOnFile.put((fileID + "_" + chunkNo),chunkData);
+        }
+
+        return true;
+    }
+
+
+    private boolean writeToFile(String filename,int chunkNo,byte[] chunkData){
+        FileOutputStream chunkFile = null;
+        try {
+            chunkFile = new FileOutputStream(restoredFilesPath + "/" + filename, true);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        try {
+            chunkFile.write(chunkData,0,(chunkNo+1)*chunkData.length);
+
+            System.out.println("Escrevi");
+        } catch (IOException e) {
             e.printStackTrace();
         }
 

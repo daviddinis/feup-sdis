@@ -86,7 +86,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         for(int chunkNo = 0; chunkNo < nChunks; chunkNo++){
             peer.requestChunkRestore(fileID,chunkNo);
         }
-        //request chunk restore
+
         //join all chunks into a file
     }
 
