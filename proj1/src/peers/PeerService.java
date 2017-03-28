@@ -549,9 +549,10 @@ public class PeerService {
         String key = fileID + "_" + chunkNo;
 
 
-        if(!restoredChunks.containsKey(key)){
+        if(!restoredChunks.containsKey(key) && !allRestoredChunks.get(fileID)){
             byte[] chunkData = chunk.getBytes();
             restoredChunks.put(key,chunkData);
+            System.out.println("Acabei de colocar : " + key);
 
             if(fileChunkNum.get(fileID) - 1 == chunkNo){
                 allRestoredChunks.put(fileID,true);
@@ -559,26 +560,7 @@ public class PeerService {
         }
 
     }
-
-
-    private boolean writeToFile(String filename,int chunkNo,byte[] chunkData){
-        FileOutputStream chunkFile = null;
-        try {
-            chunkFile = new FileOutputStream(restoredFilesPath + "/" + filename, true);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        try {
-            chunkFile.write(chunkData);
-
-            System.out.println("Escrevi");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return true;
-    }
-
+    
     public void writeRestoredChunks(String filepath, String fileID) {
 
         while(!allRestoredChunks.containsKey(fileID)){
@@ -601,6 +583,7 @@ public class PeerService {
         byte[] chunkData;
         while(i < numberOfChunks){
             chunkData = restoredChunks.get((fileID+"_"+i));
+            System.out.println("Vou por o chunk " + i +"  "+ fileID+"_"+i);
             try {
                 chunkFile.write(chunkData);
             } catch (IOException e) {
