@@ -7,18 +7,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RestoreFile {
 
-    public enum RestoreState {
-        WAITING_FOR_CHUNKS, PREPARED_TO_RESTORE
-    }
-
     /**
      * Stores chunks to be written to the file
      * key = chunk number
      * value = byte array
      */
     private ConcurrentHashMap<String,byte[]> restoredChunks;
-
-    private RestoreState currentState;
 
     private int totalNumberOfChunks;
 
@@ -28,7 +22,6 @@ public class RestoreFile {
     public RestoreFile(String filepath, String restoreFilePath){
         this.filepath = filepath;
         this.restoredFilesPath = restoreFilePath;
-        currentState = RestoreState.WAITING_FOR_CHUNKS;
         totalNumberOfChunks = -1;
         restoredChunks = new ConcurrentHashMap<>();
     }
@@ -37,15 +30,14 @@ public class RestoreFile {
         if(!restoredChunks.containsKey(chunkNo)){
             restoredChunks.put(chunkNo,chunkData);
 
-            System.out.println("Chunk Number: "+chunkNo+" Length: "+ chunkData.length);
+            //System.out.println("Chunk Number: "+chunkNo+" Length: "+ chunkData.length);
 
             if(isTheLastChunk(chunkData.length)){
                 totalNumberOfChunks = Integer.parseInt(chunkNo) + 1;
             }
-            System.out.println("Restored chunks size: "+restoredChunks.size());
+            //System.out.println("Restored chunks size: "+restoredChunks.size());
             if(restoredChunks.size() == totalNumberOfChunks){
-                System.out.println("Entrei");
-                currentState = RestoreState.PREPARED_TO_RESTORE;
+                //System.out.println("Entrei");
                 try {
                     restoreFile();
                 } catch (FileNotFoundException e) {
@@ -67,21 +59,18 @@ public class RestoreFile {
     }
 
     public boolean restoreFile() throws FileNotFoundException {
-        System.out.println("Esperando");
-        while(currentState == RestoreState.WAITING_FOR_CHUNKS){
-        }
-
-        System.out.println("Estou vivo");
 
         FileOutputStream chunkFile = new FileOutputStream(restoredFilesPath + "/" + filepath, true);;
-        restoredChunks.forEach((k, chunkData)->{
 
+        for(int i=0;i<restoredChunks.size();i++){
             try {
-                chunkFile.write(chunkData);
+                chunkFile.write(restoredChunks.get(Integer.toString(i)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        });
+        }
+
+        System.out.println("Restore done from file "+filepath);
 
         return true;
     }

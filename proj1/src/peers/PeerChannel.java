@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,6 +39,7 @@ public class PeerChannel {
 
                 try {
                     socket.receive(packet);
+
                     channelMessageHandler(packet);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -57,9 +59,10 @@ public class PeerChannel {
     }
 
     public void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
-        byte[] buffer = packet.getData();
+        byte[] buffer = Arrays.copyOfRange(packet.getData(),0,packet.getLength());
+
         Runnable task = () -> {
-            peer.messageHandler(buffer);
+            peer.messageHandler(buffer,packet.getLength());
         };
 
         ExecutorService service = Executors.newFixedThreadPool(30);
