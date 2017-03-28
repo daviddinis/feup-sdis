@@ -62,7 +62,7 @@ public class PeerChannel {
             peer.messageHandler(buffer);
         };
 
-        ExecutorService service = Executors.newFixedThreadPool(10);
+        ExecutorService service = Executors.newFixedThreadPool(30);
 
         service.execute(task);
 
