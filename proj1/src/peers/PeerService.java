@@ -420,12 +420,18 @@ public class PeerService {
         }
 
         for (Integer fileChunk : fileChunks) {
-            String chunkPath = chunksPath + '/' + fileID + '_' + Integer.toString(fileChunk);
+            String chunkName = fileID + '_' + Integer.toString(fileChunk);
+
+            chunkMap.remove(chunkName);
+            fileReplicationDegrees.remove(fileID);
+
+            String chunkPath = chunksPath + '/' + chunkName;
             File chunk = new File(chunkPath);
-            if(chunk.delete()){
+            if(chunk.delete())
                 System.out.format("Chunk %d, belonging to file %s deleted", fileChunk, fileID);
-            }
         }
+
+        storedChunks.remove(fileID);
     }
 
     /**
