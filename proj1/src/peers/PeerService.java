@@ -358,10 +358,14 @@ public class PeerService {
             return;
 
         for (int i = 0; i < fileChunks.size() ; i++) {
-            String chunkPath = chunksPath + '/' + fileID + '_' + Integer.toString(fileChunks.get(i));
+            String chunkName = fileID + '_' + Integer.toString(fileChunks.get(i));
+            String chunkPath = chunksPath + '/' + chunkName;
             File chunk = new File(chunkPath);
             chunk.delete();
+            chunkMap.remove(chunkName);
+            fileReplicationDegrees.remove(fileID);
         }
+        storedChunks.remove(fileID);
     }
 
     /**
