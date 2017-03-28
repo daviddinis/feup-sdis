@@ -26,7 +26,7 @@ public interface InitiatorInterface extends Remote {
      * @param pathname
      * @throws RemoteException
      */
-    void delete(String pathname) throws  RemoteException;
+    void delete(String pathname) throws IOException;
 
     /**
      * Function used by the user to tell to a determined peer the maximum disk space used for
