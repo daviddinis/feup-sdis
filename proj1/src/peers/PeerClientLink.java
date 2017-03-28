@@ -60,7 +60,6 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
             file.read(chunk);
             peer.requestChunkBackup(fileId,chunkNo,replicationDegree,chunk);
-            System.out.println(chunkNo);
             chunkNo++;
         }
     }
