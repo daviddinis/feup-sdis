@@ -7,10 +7,14 @@ import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class PeerService {
 
     public static final String CRLF = "\r\n";
+    public static final byte CR = 0xD;
+    public static final byte LF = 0xA;
     public static final int CHUNK_SIZE = 64000;
     public static final int ERROR = -1;
 
@@ -59,7 +63,7 @@ public class PeerService {
      * key = <fileID>_<ChunkNo>
      * value = true if the file is restored false otherwise
      */
-    private ConcurrentHashMap<String,Boolean> allRestoredChunks;
+    private ConcurrentHashMap<String,RestoreFile> restoredChunksObjects;
 
     /**
      * Stores chunks when they aren't written to the file
@@ -118,7 +122,7 @@ public class PeerService {
         fileReplicationDegrees = new ConcurrentHashMap<>();
         fileChunkNum = new ConcurrentHashMap<>();
         storedChunks = new ConcurrentHashMap<>();
-        allRestoredChunks = new ConcurrentHashMap<>();
+        restoredChunksObjects = new ConcurrentHashMap<>();
         restoredChunks = new ConcurrentHashMap<>();
     }
 
@@ -262,6 +266,10 @@ public class PeerService {
         String messageType = messageHeader[0];
         String protocolVersion = messageHeader[1];
 
+        //TODO usar isto
+       // ByteArrayInputStream input = new ByteArrayInputStream(buffer);
+
+
         switch (messageType){
             case "PUTCHUNK": {
                 if(messageHeader.length < 6){
@@ -311,7 +319,7 @@ public class PeerService {
                 if(!verifyingChunk(fileID,Integer.parseInt(chunkNo))){
                     break;
                 }
-                putChunk(protocolVersion,senderID,fileID,chunkNo);
+                sendChunk(protocolVersion,senderID,fileID,chunkNo);
             }
             case "CHUNK": {
                 if(messageHeader.length < 5){
@@ -331,7 +339,9 @@ public class PeerService {
                 String chunkNo = messageHeader[4];
                 String chunk = dataPieces[1];
 
-                storeRestoredChunk(fileID,Integer.parseInt(chunkNo),chunk);
+                RestoreFile restoreFileObj = restoredChunksObjects.get(fileID);
+                restoreFileObj.processRestoredChunks(chunkNo,chunk.getBytes());
+                //storeRestoredChunk(fileID,Integer.parseInt(chunkNo),chunk);
             }
             default: {
                 //todo treat this??
@@ -443,7 +453,12 @@ public class PeerService {
             }
 
         };
-        new Thread(task).start();
+
+        ExecutorService service = Executors.newFixedThreadPool(10);
+
+        service.execute(task);
+
+        //new Thread(task).start();
     }
 
     /**
@@ -451,13 +466,13 @@ public class PeerService {
      * @param fileId id of the file to be added
      * @return true if the file was added false otherwise
      */
-    public boolean addToRestoredHashMap(String fileId){
+    public boolean addToRestoredHashMap(String fileId,RestoreFile restoreObj){
 
-        if (allRestoredChunks.get(fileId) != null) {
+        if (restoredChunksObjects.get(fileId) != null) {
             return false;
         }
 
-        allRestoredChunks.put(fileId,false);
+        restoredChunksObjects.put(fileId,restoreObj);
 
         return true;
     }
@@ -481,7 +496,7 @@ public class PeerService {
         return true;
     }
 
-    private boolean putChunk(String protocolVersion, String senderID, String fileID, String chunkNo) {
+    private boolean sendChunk(String protocolVersion, String senderID, String fileID, String chunkNo) {
 
         if(protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
             return false;
@@ -496,6 +511,14 @@ public class PeerService {
         }
 
         byte[] chunkData = new byte[PeerService.CHUNK_SIZE];
+        Random random = new Random(System.currentTimeMillis());
+
+        long waitTime = random.nextInt(400);
+        try {
+            Thread.sleep(waitTime);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         try {
             chunkFile.read(chunkData);
@@ -527,13 +550,13 @@ public class PeerService {
     }
 
     /**
-     * Verifies if allRestoredChunks contains fileID
+     * Verifies if restoredChunksObjects contains fileID
      * @param fileID id of the file
-     * @return true if allRestoredChunks contains fileID, false otherwise
+     * @return true if restoredChunksObjects contains fileID, false otherwise
      */
     private boolean isAFileToRestore(String fileID) {
 
-        if(allRestoredChunks.get(fileID) == null)
+        if(restoredChunksObjects.get(fileID) == null)
             return false;
 
         return true;
@@ -549,24 +572,24 @@ public class PeerService {
         String key = fileID + "_" + chunkNo;
 
 
-        if(!restoredChunks.containsKey(key) && !allRestoredChunks.get(fileID)){
+       /* if(!restoredChunks.containsKey(key) && !restoredChunksObjects.get(fileID)){
             byte[] chunkData = chunk.getBytes();
             restoredChunks.put(key,chunkData);
             System.out.println("Acabei de colocar : " + key);
 
             if(fileChunkNum.get(fileID) - 1 == chunkNo){
-                allRestoredChunks.put(fileID,true);
+                restoredChunksObjects.put(fileID,true);
             }
-        }
+        }*/
 
     }
     
     public void writeRestoredChunks(String filepath, String fileID) {
 
-        while(!allRestoredChunks.containsKey(fileID)){
+        /*while(!restoredChunksObjects.containsKey(fileID)){
         }
 
-        while(!allRestoredChunks.get(fileID)){
+        while(!restoredChunksObjects.get(fileID)){
         }
 
         System.out.println("Chegaram todas");
@@ -592,6 +615,11 @@ public class PeerService {
             i++;
         }
 
-        System.out.println("Tudo feito!!");
+        System.out.println("Tudo feito!!");*/
+    }
+
+    public String getRestoredFilesPath() {
+        return restoredFilesPath;
     }
 }
+

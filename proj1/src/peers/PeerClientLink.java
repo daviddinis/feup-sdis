@@ -80,7 +80,9 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         if(nChunks == PeerService.ERROR)
             return;
 
-        if (!peer.addToRestoredHashMap(fileID))
+        RestoreFile restoreFileObj = new RestoreFile(filepath, peer.getRestoredFilesPath());
+
+        if (!peer.addToRestoredHashMap(fileID,restoreFileObj))
             return;
 
         for(int chunkNo = 0; chunkNo < nChunks; chunkNo++){
@@ -88,7 +90,9 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         }
 
         //join all chunks into a file
-        peer.writeRestoredChunks(filepath,fileID);
+        //peer.writeRestoredChunks(filepath,fileID);
+
+        //restoreFileObj.restoreFile();
     }
 
     @Override

@@ -5,6 +5,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class PeerChannel {
 
@@ -59,6 +61,11 @@ public class PeerChannel {
         Runnable task = () -> {
             peer.messageHandler(buffer);
         };
-        new Thread(task).start();
+
+        ExecutorService service = Executors.newFixedThreadPool(10);
+
+        service.execute(task);
+
+        //new Thread(task).start();
     }
 }
