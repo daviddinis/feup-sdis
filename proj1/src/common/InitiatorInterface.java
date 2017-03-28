@@ -19,7 +19,7 @@ public interface InitiatorInterface extends Remote {
      * @param pathname
      * @throws RemoteException
      */
-    void restore(String pathname) throws RemoteException;
+    void restore(String pathname) throws IOException;
 
     /**
      * Function used by the user to delete a determined file
