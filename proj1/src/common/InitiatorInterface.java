@@ -8,6 +8,7 @@ public interface InitiatorInterface extends Remote {
 
     /**
      * Function used by the user to back-up a determined file
+     *
      * @param pathname
      * @param replicationDegree
      * @throws RemoteException
@@ -16,6 +17,7 @@ public interface InitiatorInterface extends Remote {
 
     /**
      * Function used by the user to restore a determined file
+     *
      * @param pathname
      * @throws RemoteException
      */
@@ -23,6 +25,7 @@ public interface InitiatorInterface extends Remote {
 
     /**
      * Function used by the user to delete a determined file
+     *
      * @param pathname
      * @throws RemoteException
      */
@@ -31,6 +34,7 @@ public interface InitiatorInterface extends Remote {
     /**
      * Function used by the user to tell to a determined peer the maximum disk space used for
      * storing chunks
+     *
      * @param maxDiskSpace
      * @throws RemoteException
      */
@@ -38,6 +42,7 @@ public interface InitiatorInterface extends Remote {
 
     /**
      * Function used by the user to observe the service state
+     *
      * @throws RemoteException
      */
     void state() throws RemoteException;

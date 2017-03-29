@@ -5,7 +5,7 @@ import java.net.InetAddress;
 
 public class PeerLauncher {
     public static void main(String[] args) throws IOException {
-        if(args.length != 9){
+        if (args.length != 9) {
             System.out.println(args.length);
             throw new IllegalArgumentException("\nUsage: java PeerLauncher <peerId> <protocolVersion> <accessPoint>" +
                     " <mcAddr> <mcPort> <mdbAddr> <mdbPort> <mdrAddr> <mdrPort>");
@@ -24,7 +24,7 @@ public class PeerLauncher {
         InetAddress mdrAddr = InetAddress.getByName(args[7]);
         int mdrPort = Integer.parseInt(args[8]);
 
-        PeerService peerService = new PeerService(serverId, protocolVersion, serviceAccessPoint,mcAddr,mcPort,
-                mdbAddr,mdbPort,mdrAddr,mdrPort);
+        PeerService peerService = new PeerService(serverId, protocolVersion, serviceAccessPoint, mcAddr, mcPort,
+                mdbAddr, mdbPort, mdrAddr, mdrPort);
     }
 }

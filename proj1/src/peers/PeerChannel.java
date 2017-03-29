@@ -50,19 +50,23 @@ public class PeerChannel {
         new Thread(task).start();
     }
 
-    public void sendMessage(byte[] message) throws IOException {
+    public boolean sendMessage(byte[] message){
 
-        DatagramPacket packet = new DatagramPacket(message,message.length,addr,port);
+        DatagramPacket packet = new DatagramPacket(message, message.length, addr, port);
 
-        socket.send(packet);
-
+        try {
+            socket.send(packet);
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
     }
 
     public void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
-        byte[] buffer = Arrays.copyOfRange(packet.getData(),0,packet.getLength());
+        byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
         Runnable task = () -> {
-            peer.messageHandler(buffer,packet.getLength());
+            peer.messageHandler(buffer, packet.getLength());
         };
 
         ExecutorService service = Executors.newFixedThreadPool(30);

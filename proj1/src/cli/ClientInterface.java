@@ -13,7 +13,7 @@ public class ClientInterface {
 
     public static void main(String args[]) throws IOException, NotBoundException {
 
-        if(args.length != 4 && args.length != 5){
+        if (args.length != 4 && args.length != 5) {
             System.out.println(args.length);
             throw new IllegalArgumentException("\nUsage: java ClientInterface <peerAp>" +
                     " <protocol-version> <operation> <opnd1> <opnd2> ");
@@ -25,20 +25,20 @@ public class ClientInterface {
 
         try {
             Registry registry = LocateRegistry.getRegistry();
-            initiatorPeer  = (InitiatorInterface) registry.lookup(peerAp);
-        } catch (Exception e){
+            initiatorPeer = (InitiatorInterface) registry.lookup(peerAp);
+        } catch (Exception e) {
             System.err.println("Client exception: " + e.toString());
             e.printStackTrace();
         }
 
         String pathname;
 
-        switch (operation.toUpperCase()){
+        switch (operation.toUpperCase()) {
             case "BACKUP":
                 pathname = args[3];
                 int replicationDegree = Integer.parseInt(args[4]);
                 System.out.println("Requesting backup of file " + pathname + " with a replication degree of " + replicationDegree);
-                initiatorPeer.backup(pathname,replicationDegree);
+                initiatorPeer.backup(pathname, replicationDegree);
                 break;
             case "RESTORE":
                 pathname = args[3];

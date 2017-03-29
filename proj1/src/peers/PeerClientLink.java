@@ -6,7 +6,6 @@ import javax.xml.bind.DatatypeConverter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,8 +17,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 public class PeerClientLink extends UnicastRemoteObject implements InitiatorInterface {
 
@@ -32,15 +29,14 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
     @Override
     public void backup(String filepath, int replicationDegree) throws IOException {
-        if(filepath == null || replicationDegree < 1){
+        if (filepath == null || replicationDegree < 1) {
             throw new IllegalArgumentException("Invalid arguments for backup");
         }
 
-        FileInputStream file;
-        try{
-           file = new FileInputStream(filepath);
-        } catch (FileNotFoundException e){
-            throw e;
+        FileInputStream file = null;
+        try {
+            file = new FileInputStream(filepath);
+        } catch (FileNotFoundException e) {
         }
 
         System.out.println("New backup request for file " + filepath);
@@ -48,27 +44,25 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         String fileId = getFileHash(filepath);
 
-        peer.registerFile(fileId, replicationDegree);
-
-        while(file.available() > 0){
+        while (file.available() > 0) {
             int readableBytes = file.available();
             byte[] chunk;
 
-            if(readableBytes > PeerService.CHUNK_SIZE)
+            if (readableBytes > PeerService.CHUNK_SIZE)
                 chunk = new byte[PeerService.CHUNK_SIZE];
             else
                 chunk = new byte[readableBytes];
 
             file.read(chunk);
-            peer.requestChunkBackup(fileId,chunkNo,replicationDegree,chunk);
+            peer.requestChunkBackup(fileId, chunkNo, replicationDegree, chunk);
             chunkNo++;
         }
-        peer.registerNumChunks(fileId,chunkNo);
+        peer.registerFile(fileId, replicationDegree, chunkNo);
     }
 
     @Override
     public void restore(String filepath) throws IOException {
-        if(filepath == null)
+        if (filepath == null)
             throw new IllegalArgumentException("Invalid argument for restore");
 
         System.out.println("New restore request for file " + filepath);
@@ -77,16 +71,16 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         // Verifying if the file was already backed up
         int nChunks = peer.getNumChunks(fileID);
-        if(nChunks == PeerService.ERROR)
+        if (nChunks == PeerService.ERROR)
             return;
 
         RestoreFile restoreFileObj = new RestoreFile(filepath, peer.getRestoredFilesPath());
 
-        if (!peer.addToRestoredHashMap(fileID,restoreFileObj))
+        if (!peer.addToRestoredHashMap(fileID, restoreFileObj))
             return;
 
-        for(int chunkNo = 0; chunkNo < nChunks; chunkNo++){
-            peer.requestChunkRestore(fileID,chunkNo);
+        for (int chunkNo = 0; chunkNo < nChunks; chunkNo++) {
+            peer.requestChunkRestore(fileID, chunkNo);
         }
 
         //join all chunks into a file
@@ -97,7 +91,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
     @Override
     public void delete(String filepath) throws IOException {
-        if(filepath == null)
+        if (filepath == null)
             throw new IllegalArgumentException("Invalid arguments for delete");
         String fileID = getFileHash(filepath);
         peer.requestFileDeletion(fileID);
