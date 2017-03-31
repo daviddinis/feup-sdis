@@ -30,14 +30,14 @@ public class RestoreFile {
         if (!restoredChunks.containsKey(chunkNo)) {
             restoredChunks.put(chunkNo, chunkData);
 
-            //System.out.println("Chunk Number: "+chunkNo+" Length: "+ chunkData.length);
+            System.out.println("Chunk Number: "+chunkNo+" Length: "+ chunkData.length);
 
             if (isTheLastChunk(chunkData.length)) {
                 totalNumberOfChunks = Integer.parseInt(chunkNo) + 1;
             }
-            //System.out.println("Restored chunks size: "+restoredChunks.size());
+            System.out.println("Restored chunks size: "+restoredChunks.size());
             if (restoredChunks.size() == totalNumberOfChunks) {
-                //System.out.println("Entrei");
+                System.out.println("Entrei");
                 try {
                     restoreFile();
                 } catch (FileNotFoundException e) {

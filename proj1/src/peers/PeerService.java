@@ -207,7 +207,12 @@ public class PeerService {
                 System.out.println("Success!");
             }
         };
-        new Thread(task).start();
+
+        ExecutorService service = Executors.newFixedThreadPool(10);
+
+        service.execute(task);
+
+        //new Thread(task).start();
     }
 
     /**
