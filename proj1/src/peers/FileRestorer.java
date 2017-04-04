@@ -69,4 +69,7 @@ public class FileRestorer {
         System.out.format("File %s restored", filepath);
     }
 
+    public ConcurrentHashMap<String, byte[]> getRestoredChunks() {
+        return restoredChunks;
+    }
 }

@@ -31,7 +31,7 @@ public class PeerService {
 
     /**
      * registers the number of chunks written to a file
-     * key = <fileID>_<ChunkNo>
+     * key = <fileID>
      * value = true if the file is restored false otherwise
      */
     private ConcurrentHashMap<String, FileRestorer> restoredChunksObjects;
@@ -351,12 +351,42 @@ public class PeerService {
     public void requestChunkRestore(String fileId, int chunkNo) {
 
         Runnable task = () -> {
+            int counter = 1, multiplier = 1;
+
+            FileRestorer fileRestorer = restoredChunksObjects.get(fileId);
 
             String header = makeHeader("GETCHUNK", protocolVersion, serverId, fileId,
                     Integer.toString(chunkNo));
 
             byte[] headerBytes = header.getBytes();
-            controlChannel.sendMessage(headerBytes);
+            //controlChannel.sendMessage(headerBytes);
+
+            do {
+                if (controlChannel.sendMessage(headerBytes))
+                    printHeader(header, true);
+
+                else {
+                    System.err.println("IOException :: PeerService :: Failed to send GETCHUNK message");
+
+                    counter++;
+                    multiplier *= 2;
+
+                    if (counter > 5)
+                        break;
+                    else continue;
+                }
+
+                // wait and process response
+                try {
+                    Thread.sleep(1000 * multiplier);
+                } catch (InterruptedException e) {
+                    System.err.println("InterruptedException :: PeerService :: Retrying");
+                    continue;
+                }
+                counter++;
+                multiplier *= 2;
+            }
+            while (!fileRestorer.getRestoredChunks().containsKey(chunkNo));
         };
 
         new Thread(task).start();
