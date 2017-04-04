@@ -94,7 +94,8 @@ public class PeerService {
 
         chunkManager = new ChunkManager(serverId, chunksPath);
 
-        availableSpace = 1000;
+        //6 400 000 bytes (100 full chunks, ~6MB)
+        availableSpace = 6400;
     }
 
     /**
@@ -220,10 +221,13 @@ public class PeerService {
      */
     public void updateAvailableSpace(int maxSpace){
         availableSpace = maxSpace;
-        ArrayList<String> deletedChunks = chunkManager.reclaimSpace(availableSpace);
-        if(deletedChunks.isEmpty()) //no chunks were deleted
+        ArrayList<String> deletedChunks = chunkManager.reclaimSpace(availableSpace * 1000);
+        if(deletedChunks.isEmpty()) { //no chunks were deleted
+            System.out.println("No chunks were deleted");
             return;
+        }
 
+        System.out.format("%d chunks were deleted", deletedChunks.size());
         for(String deletedChunk : deletedChunks){
             String[] deletedChunkInfo = deletedChunk.split("_");
             String fileID = deletedChunkInfo[0];
@@ -264,7 +268,8 @@ public class PeerService {
         String messageType = messageHeader[0];
         String protocolVersion = messageHeader[1];
         String senderID = messageHeader[2];
-        if (senderID.equals(this.serverId))// backup request sent from this peer, ignore
+
+        if (senderID.equals(this.serverId))// message sent from this peer, ignore
             return;
 
         switch (messageType) {
@@ -341,6 +346,27 @@ public class PeerService {
                 printHeader(header, false);
                 String fileID = messageHeader[3];
                 chunkManager.deleteFile(fileID);
+                break;
+            }
+            case "REMOVED":{
+                if (messageHeader.length < 5){
+                    System.err.println("Not enough fields on header for REMOVE");
+                    break;
+                }
+                String fileID = messageHeader[3];
+                String chunkNo = messageHeader[4];
+                printHeader(header, false);
+                if(!chunkManager.registerRemoval(protocolVersion,senderID,fileID, chunkNo))
+                    break;
+                int desiredReplicationDegree = chunkManager.getDesiredReplicationDegree(fileID);
+                if(chunkManager.getReplicationDegree(fileID, chunkNo) < desiredReplicationDegree)
+                    System.out.format("Replication degree for chunk %s of file %s is under the desired level.", chunkNo,fileID);
+                    try {
+                        byte[] chunk = chunkManager.getChunkData(fileID,chunkNo);
+                        requestChunkBackup(fileID, Integer.parseInt(chunkNo), desiredReplicationDegree, chunk);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 break;
             }
             default: {

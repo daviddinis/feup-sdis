@@ -29,6 +29,7 @@ public class ChunkManager {
     /**
      * stores the desired replication degree for every file the
      * peer has stored or has chunks of
+     * TODO change name to desiredFileReplicationDegrees
      */
     private final ConcurrentHashMap<String, Integer> fileReplicationDegrees;
 
@@ -66,6 +67,17 @@ public class ChunkManager {
             fileReplicationDegrees.remove(fileID);
         }
         fileReplicationDegrees.put(fileID, replicationDegree);
+    }
+
+    /**
+     * Returns the desired replication degree of a file,
+     * identified by it's ID
+     *
+     * @param fileID file to check
+     * @return desired replication degree of the file
+     */
+    public int getDesiredReplicationDegree(String fileID){
+        return fileReplicationDegrees.getOrDefault(fileID,-1);
     }
 
     /**
@@ -160,6 +172,32 @@ public class ChunkManager {
             }
             chunkPeers.add(sender);
         }
+        return true;
+    }
+
+    /**
+     *
+     * Called when a peer receives a STORED message from another peer
+     * It updates the peer's chunkMap to reflect the perceived
+     * replication degree of the chunk
+     *
+     * @param protocolVersion protocol version used by the message sender
+     * @param senderID        id of the sender of the REMOVED message
+     * @param fileID          id of the file whose chunk was removed
+     * @param chunkNo         chunk number of the removed chunk
+     * @return                true on success, false if the file was not registered on this peer
+     */
+    public boolean registerRemoval(String protocolVersion, String senderID, String fileID, String chunkNo){
+        if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
+            return false;
+
+
+        ArrayList<Integer> chunkPeers = chunkMap.get(fileID + '_' + chunkNo);
+        if(chunkPeers == null) //file not registered on the server
+            return false;
+
+        Object sender = Integer.parseInt(senderID);
+        chunkPeers.remove(sender);
         return true;
     }
 
@@ -269,7 +307,9 @@ public class ChunkManager {
         File chunkDir = new File(chunksPath);
         ArrayList<String> deletedChunks = new ArrayList<>();
 
-       while(getOccupiedSpace() < availableSpace) {
+        System.out.println(getOccupiedSpace());
+       while(getOccupiedSpace() > availableSpace) {
+           System.out.println(getOccupiedSpace());
 
            File[] chunks = chunkDir.listFiles();
            if (chunks == null)
@@ -280,7 +320,7 @@ public class ChunkManager {
                if (chunk.length() < smallestChunk.length())
                    smallestChunk = chunk;
            }
-           deletedChunks.add(chunkDir.getName());
+           deletedChunks.add(smallestChunk.getName());
            smallestChunk.delete();
        }
        return deletedChunks;
