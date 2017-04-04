@@ -41,12 +41,14 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         System.out.println("New backup request for file " + filepath);
         int chunkNo = 0;
+        int readableBytes = -1;
+        byte[] chunk;
 
         String fileId = getFileHash(filepath);
 
+
         while (file.available() > 0) {
-            int readableBytes = file.available();
-            byte[] chunk;
+            readableBytes = file.available();
 
             if (readableBytes > PeerService.CHUNK_SIZE)
                 chunk = new byte[PeerService.CHUNK_SIZE];
@@ -57,6 +59,17 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             peer.requestChunkBackup(fileId, chunkNo, replicationDegree, chunk);
             chunkNo++;
         }
+
+        /*
+           Check if the last chunk had exactly CHUNK_SIZE
+           If so, send an empty chunk
+         */
+        if (readableBytes == PeerService.CHUNK_SIZE) {
+            chunk = new byte[0];
+            peer.requestChunkBackup(fileId, chunkNo, replicationDegree, chunk);
+            chunkNo++;
+        }
+
         peer.registerFile(fileId, replicationDegree, chunkNo);
     }
 
@@ -71,22 +84,17 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         // Verifying if the file was already backed up
         int nChunks = peer.getNumChunks(fileID);
-        if (nChunks == PeerService.ERROR)
+        if (nChunks == PeerService.ERROR) {
+            System.err.format("File %s is not known to this peer", filepath);
             return;
+        }
 
-        RestoreFile restoreFileObj = new RestoreFile(filepath, peer.getRestoredFilesPath());
-
-        if (!peer.addToRestoredHashMap(fileID, restoreFileObj))
-            return;
+        FileRestorer fileRestorer = new FileRestorer(peer, filepath, peer.getRestoredFilesPath(), fileID);
+        peer.addToRestoredHashMap(fileID, fileRestorer);
 
         for (int chunkNo = 0; chunkNo < nChunks; chunkNo++) {
             peer.requestChunkRestore(fileID, chunkNo);
         }
-
-        //join all chunks into a file
-        //peer.writeRestoredChunks(filepath,fileID);
-
-        //restoreFileObj.restoreFile();
     }
 
     @Override

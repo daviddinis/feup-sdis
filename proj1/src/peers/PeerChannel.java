@@ -32,6 +32,7 @@ public class PeerChannel {
 
         Runnable task = () -> {
 
+            //noinspection InfiniteLoopStatement
             while (true) {
 
                 byte[] buf = new byte[PeerService.CHUNK_SIZE + 100];
@@ -50,7 +51,7 @@ public class PeerChannel {
         new Thread(task).start();
     }
 
-    public boolean sendMessage(byte[] message){
+    public boolean sendMessage(byte[] message) {
 
         DatagramPacket packet = new DatagramPacket(message, message.length, addr, port);
 
@@ -62,7 +63,7 @@ public class PeerChannel {
         return true;
     }
 
-    public void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
+    private void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
         byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
         Runnable task = () -> {

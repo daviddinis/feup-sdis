@@ -1,6 +1,8 @@
 package peers;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -11,24 +13,19 @@ import java.util.concurrent.Executors;
 
 public class PeerService {
 
-    public static final String CRLF = "\r\n";
-    public static final byte CR = 0xD;
-    public static final byte LF = 0xA;
     public static final int CHUNK_SIZE = 64000;
     public static final int ERROR = -1;
-
+    private static final String CRLF = "\r\n";
+    private static final byte CR = 0xD;
+    private static final byte LF = 0xA;
     private String serverId;
     private String protocolVersion;
-    private String serviceAccessPoint;
 
     private PeerChannel controlChannel;
     private PeerChannel dataBackupChannel;
     private PeerChannel dataRestoreChannel;
 
-    private String myFilesPath;
     private String restoredFilesPath;
-
-    private PeerClientLink initiatorPeer;
 
     private ChunkManager chunkManager;
 
@@ -37,21 +34,15 @@ public class PeerService {
      * key = <fileID>_<ChunkNo>
      * value = true if the file is restored false otherwise
      */
-    private ConcurrentHashMap<String, RestoreFile> restoredChunksObjects;
+    private ConcurrentHashMap<String, FileRestorer> restoredChunksObjects;
 
-    /**
-     * Stores chunks when they aren't written to the file
-     * key = <fileID>
-     * value = byte array
-     */
-    private ConcurrentHashMap<String, byte[]> restoredChunks;
 
     public PeerService(String serverId, String protocolVersion, String serviceAccessPoint, InetAddress mcAddr, int mcPort, InetAddress mdbAddr, int mdbPort,
                        InetAddress mdrAddr, int mdrPort) throws IOException {
 
         this.serverId = serverId;
         this.protocolVersion = protocolVersion;
-        this.serviceAccessPoint = serviceAccessPoint;
+        String serviceAccessPoint1 = serviceAccessPoint;
 
         controlChannel = new PeerChannel(mcAddr, mcPort, this);
         System.out.println("Control Channel ready! Listening...");
@@ -66,12 +57,12 @@ public class PeerService {
 
         System.out.println("Server ID: " + serverId);
 
-        initiatorPeer = new PeerClientLink(this);
+        PeerClientLink initiatorPeer = new PeerClientLink(this);
 
         try {
             //TODO add ip address
             Registry registry = LocateRegistry.getRegistry();
-            registry.bind(this.serviceAccessPoint, initiatorPeer);
+            registry.bind(serviceAccessPoint1, initiatorPeer);
         } catch (Exception e) {
             //TODO add rebind
             System.out.println("Peer error: " + e.getMessage());
@@ -80,7 +71,7 @@ public class PeerService {
 
 
         String chunksPath = serverId + "/chunks";
-        myFilesPath = serverId + "/my_files";
+        String myFilesPath = serverId + "/my_files";
         restoredFilesPath = serverId + "/restored_files";
 
         createDir(serverId);
@@ -93,7 +84,6 @@ public class PeerService {
         dataRestoreChannel.receiveMessage();
 
         restoredChunksObjects = new ConcurrentHashMap<>();
-        restoredChunks = new ConcurrentHashMap<>();
 
         chunkManager = new ChunkManager(serverId, chunksPath);
     }
@@ -137,8 +127,7 @@ public class PeerService {
      * @param fileID id of the file
      * @return true if restoredChunksObjects contains fileID, false otherwise
      */
-    private boolean isAFileToRestore(String fileID) {
-
+    private boolean requestedRestore(String fileID) {
         return restoredChunksObjects.get(fileID) != null;
     }
 
@@ -174,7 +163,7 @@ public class PeerService {
             System.arraycopy(chunk, 0, buf, headerBytes.length, chunk.length);
 
             do {
-                if(dataBackupChannel.sendMessage(buf))
+                if (dataBackupChannel.sendMessage(buf))
                     printHeader(header, true);
 
                 else {
@@ -197,7 +186,8 @@ public class PeerService {
                 }
                 counter++;
                 multiplier *= 2;
-            } while (counter <= 5 && chunkManager.getReplicationDegree(fileId, Integer.toString(chunkNo)) < replicationDegree);
+            }
+            while (counter <= 5 && chunkManager.getReplicationDegree(fileId, Integer.toString(chunkNo)) < replicationDegree);
 
             int achievedRepDeg = chunkManager.getReplicationDegree(fileId, Integer.toString(chunkNo));
             if (counter > 5) {
@@ -298,15 +288,15 @@ public class PeerService {
 
                 String fileID = messageHeader[3];
 
-                if (!isAFileToRestore(fileID))
+                if (!requestedRestore(fileID))
                     break;
 
                 String chunkNo = messageHeader[4];
                 byte[] chunk = new byte[input.available()];
                 input.read(chunk, 0, input.available());
 
-                RestoreFile restoreFileObj = restoredChunksObjects.get(fileID);
-                restoreFileObj.processRestoredChunks(chunkNo, chunk);
+                FileRestorer fileRestorer = restoredChunksObjects.get(fileID);
+                fileRestorer.processRestoredChunks(chunkNo, chunk);
                 break;
             }
             case "DELETE": {
@@ -325,7 +315,6 @@ public class PeerService {
             }
         }
     }
-
 
 
     /**
@@ -378,15 +367,12 @@ public class PeerService {
      * @param fileId id of the file to be added
      * @return true if the file was added false otherwise
      */
-    public boolean addToRestoredHashMap(String fileId, RestoreFile restoreObj) {
+    public void addToRestoredHashMap(String fileId, FileRestorer fileRestorer) {
 
-        if (restoredChunksObjects.get(fileId) != null) {
-            return false;
-        }
+        if (restoredChunksObjects.containsKey(fileId))
+            restoredChunksObjects.replace(fileId, fileRestorer);
 
-        restoredChunksObjects.put(fileId, restoreObj);
-
-        return true;
+        restoredChunksObjects.put(fileId, fileRestorer);
     }
 
 
@@ -426,12 +412,15 @@ public class PeerService {
     }
 
     public void registerFile(String fileId, int replicationDegree, int numChunks) {
-        chunkManager.registerFile(fileId,replicationDegree);
-        chunkManager.registerNumChunks(fileId,numChunks);
+        chunkManager.registerFile(fileId, replicationDegree);
+        chunkManager.registerNumChunks(fileId, numChunks);
     }
 
-    public int getNumChunks(String fileID){
+    public int getNumChunks(String fileID) {
         return chunkManager.getNumChunks(fileID);
     }
-}
 
+    public void markRestored(String fileID) {
+        restoredChunksObjects.remove(fileID);
+    }
+}

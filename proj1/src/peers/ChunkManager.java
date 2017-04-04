@@ -17,7 +17,7 @@ public class ChunkManager {
     /**
      * stores the number of chunks every file has
      */
-    private ConcurrentHashMap<String, Integer> fileChunkNum;
+    private ConcurrentHashMap<String, Integer> numChunksFile;
 
     /**
      * registers the peers that have stored chunks
@@ -42,14 +42,14 @@ public class ChunkManager {
     private String chunksPath;
     private String serverId;
 
-    public ChunkManager(String serverId, String chunksPath){
+    public ChunkManager(String serverId, String chunksPath) {
 
         this.serverId = serverId;
         this.chunksPath = chunksPath;
         fileReplicationDegrees = new ConcurrentHashMap<>();
         storedChunks = new ConcurrentHashMap<>();
         chunkMap = new ConcurrentHashMap<>();
-        fileChunkNum = new ConcurrentHashMap<>();
+        numChunksFile = new ConcurrentHashMap<>();
     }
 
     /**
@@ -77,10 +77,10 @@ public class ChunkManager {
      * @param replicationDegree desired replication degree of the chunk
      * @return true if the chunk was registered, false otherwise
      */
-    public void registerChunk(String fileID, int chunkNo, int replicationDegree) {
+    private void registerChunk(String fileID, int chunkNo, int replicationDegree) {
         ArrayList<Integer> fileChunks = storedChunks.get(fileID);
 
-        if(hasChunk(fileID,chunkNo))
+        if (hasChunk(fileID, chunkNo))
             return;
 
         // no chunks registered for this file, register the file and register the chunk
@@ -113,7 +113,7 @@ public class ChunkManager {
 
         try {
             // Check if the chunk is already stored
-            if (!hasChunk(fileID,Integer.parseInt(chunkNo))){
+            if (!hasChunk(fileID, Integer.parseInt(chunkNo))) {
                 registerChunk(fileID, Integer.parseInt(chunkNo), Integer.parseInt(replicationDegree));
                 String filename = fileID + "_" + chunkNo;
                 FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
@@ -176,6 +176,7 @@ public class ChunkManager {
 
         return fileStoredChunks != null && fileStoredChunks.contains(chunkNo);
     }
+
     /**
      * Get the perceived replication degree of a chunk
      * Checks the peer's chunk map to see how many peers have a copy of the chunk
@@ -185,27 +186,26 @@ public class ChunkManager {
      * @return the perceived replication degree of the chunk
      */
     public int getReplicationDegree(String fileID, String chunkNo) {
-        ArrayList chunkPeers = chunkMap.get(fileID + '_' + chunkNo);
-        if (chunkPeers == null)
-            return -1;
-        else return chunkPeers.size();
+        String key = fileID + '_' + chunkNo;
+        return chunkMap.containsKey(key) ? chunkMap.get(key).size() : -1;
     }
+
     public boolean registerNumChunks(String fileID, int numChunks) {
-        if (fileChunkNum.get(fileID) != null)
+        if (numChunksFile.containsKey(fileID))
             return false;
 
-        fileChunkNum.put(fileID, numChunks);
+        numChunksFile.put(fileID, numChunks);
         return true;
     }
 
+    /**
+     * Returns the number of chunks a file has
+     *
+     * @param fileID file ID of the file
+     * @return number of chunks the file has or ERROR (-1) if the file is not registered
+     */
     public int getNumChunks(String fileID) {
-
-        Object ChunksNo = fileChunkNum.get(fileID);
-
-        if (ChunksNo == null)
-            return -1;
-
-        return (int) ChunksNo;
+        return numChunksFile.containsKey(fileID) ? numChunksFile.get(fileID) : PeerService.ERROR;
     }
 
     /**
@@ -236,7 +236,7 @@ public class ChunkManager {
         storedChunks.remove(fileID);
     }
 
-    public byte[] getChunkData(String fileID, String chunkNo) throws IOException{
+    public byte[] getChunkData(String fileID, String chunkNo) throws IOException {
 
         String filename = fileID + "_" + chunkNo;
         FileInputStream chunkFile = null;
