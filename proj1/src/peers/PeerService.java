@@ -18,8 +18,8 @@ public class PeerService {
     private static final String CRLF = "\r\n";
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
-    private String serverId;
-    private String protocolVersion;
+    private final String serverId;
+    private final String protocolVersion;
 
     private PeerChannel controlChannel;
     private PeerChannel dataBackupChannel;
@@ -93,7 +93,7 @@ public class PeerService {
      *
      * @param path path of the directory to be created
      */
-    public void createDir(String path) {
+    private void createDir(String path) {
 
         File file = new File(path);
 
@@ -197,7 +197,12 @@ public class PeerService {
                 System.out.println("Success!");
             }
         };
-        new Thread(task).start();
+
+        ExecutorService service = Executors.newFixedThreadPool(10);
+
+        service.execute(task);
+
+        //new Thread(task).start();
     }
 
     /**
@@ -223,10 +228,10 @@ public class PeerService {
         }
 
         header = header.trim();
-        String messageHeader[] = header.toString().split(" ");
+        String messageHeader[] = header.split(" ");
 
         //check message type
-        System.out.println(header.toString());
+        System.out.println(header);
         String messageType = messageHeader[0];
         String protocolVersion = messageHeader[1];
         String senderID = messageHeader[2];
@@ -239,7 +244,7 @@ public class PeerService {
                     System.err.println("Not enough fields on header for PUTCHUNK");
                     break;
                 }
-                printHeader(header.toString(), false);
+                printHeader(header, false);
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
                 String replicationDegree = messageHeader[5];
@@ -256,7 +261,7 @@ public class PeerService {
                     System.err.println("Not enough fields on header for STORED");
                     break;
                 }
-                printHeader(header.toString(), false);
+                printHeader(header, false);
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
                 chunkManager.registerStorage(protocolVersion, senderID, fileID, chunkNo);
@@ -267,7 +272,7 @@ public class PeerService {
                     System.err.println("Not enough fields on header for GETCHUNK");
                     break;
                 }
-                printHeader(header.toString(), false);
+                printHeader(header, false);
 
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
@@ -284,7 +289,7 @@ public class PeerService {
                     System.err.println("Not enough fields on header for GETCHUNK");
                     break;
                 }
-                printHeader(header.toString(), false);
+                printHeader(header, false);
 
                 String fileID = messageHeader[3];
 
@@ -304,7 +309,7 @@ public class PeerService {
                     System.err.println("Not enough fields on header for DELETE");
                     break;
                 }
-                printHeader(header.toString(), false);
+                printHeader(header, false);
                 String fileID = messageHeader[3];
                 chunkManager.deleteFile(fileID);
                 break;
@@ -365,7 +370,6 @@ public class PeerService {
      * Adds a file_id to the restore hash map
      *
      * @param fileId id of the file to be added
-     * @return true if the file was added false otherwise
      */
     public void addToRestoredHashMap(String fileId, FileRestorer fileRestorer) {
 

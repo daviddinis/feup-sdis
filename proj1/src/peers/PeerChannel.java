@@ -11,12 +11,12 @@ import java.util.concurrent.Executors;
 
 public class PeerChannel {
 
-    private InetAddress addr;
-    private int port;
+    private final InetAddress addr;
+    private final int port;
 
     private MulticastSocket socket;
 
-    private PeerService peer;
+    private final PeerService peer;
 
     public PeerChannel(InetAddress addr, int port, PeerService peer) throws IOException {
         this.addr = addr;
@@ -48,7 +48,11 @@ public class PeerChannel {
             }
         };
 
-        new Thread(task).start();
+        ExecutorService service = Executors.newFixedThreadPool(10);
+
+        service.execute(task);
+
+        //new Thread(task).start();
     }
 
     public boolean sendMessage(byte[] message) {
@@ -66,13 +70,13 @@ public class PeerChannel {
     private void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
         byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
-        Runnable task = () -> {
-            peer.messageHandler(buffer, packet.getLength());
-        };
+        //Runnable task = () -> {
+        peer.messageHandler(buffer, packet.getLength());
+        //};
 
-        ExecutorService service = Executors.newFixedThreadPool(30);
+        //ExecutorService service = Executors.newFixedThreadPool(10);
 
-        service.execute(task);
+        //service.execute(task);
 
         //new Thread(task).start();
     }

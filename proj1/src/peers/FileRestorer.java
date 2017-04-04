@@ -12,13 +12,13 @@ public class FileRestorer {
      * key = chunk number
      * value = byte array
      */
-    private ConcurrentHashMap<String, byte[]> restoredChunks;
+    private final ConcurrentHashMap<String, byte[]> restoredChunks;
 
     private int nChunks;
-    private String filepath;
-    private String restoredFilesPath;
-    private PeerService peer;
-    private String fileID;
+    private final String filepath;
+    private final String restoredFilesPath;
+    private final PeerService peer;
+    private final String fileID;
 
     public FileRestorer(PeerService peer, String filepath, String restoredFilesPath, String fileID) {
         this.peer = peer;

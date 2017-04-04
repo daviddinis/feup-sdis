@@ -17,30 +17,30 @@ public class ChunkManager {
     /**
      * stores the number of chunks every file has
      */
-    private ConcurrentHashMap<String, Integer> numChunksFile;
+    private final ConcurrentHashMap<String, Integer> numChunksFile;
 
     /**
      * registers the peers that have stored chunks
      * key = <fileID>_<ChunkNo>
      * value = array with the peer id of the peers that have stored that chunk
      */
-    private ConcurrentHashMap<String, ArrayList<Integer>> chunkMap;
+    private final ConcurrentHashMap<String, ArrayList<Integer>> chunkMap;
 
     /**
      * stores the desired replication degree for every file the
      * peer has stored or has chunks of
      */
-    private ConcurrentHashMap<String, Integer> fileReplicationDegrees;
+    private final ConcurrentHashMap<String, Integer> fileReplicationDegrees;
 
     /**
      * registers the chunk number of the stored chunks
      * key = <fileID>
      * value = array with the chunk numbers of the stored chunks
      */
-    private ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
+    private final ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
 
-    private String chunksPath;
-    private String serverId;
+    private final String chunksPath;
+    private final String serverId;
 
     public ChunkManager(String serverId, String chunksPath) {
 
@@ -75,7 +75,6 @@ public class ChunkManager {
      * @param fileID            file ID of the file the chunk belongs to
      * @param chunkNo           chunk number of the chunk to register
      * @param replicationDegree desired replication degree of the chunk
-     * @return true if the chunk was registered, false otherwise
      */
     private void registerChunk(String fileID, int chunkNo, int replicationDegree) {
         ArrayList<Integer> fileChunks = storedChunks.get(fileID);
@@ -205,7 +204,7 @@ public class ChunkManager {
      * @return number of chunks the file has or ERROR (-1) if the file is not registered
      */
     public int getNumChunks(String fileID) {
-        return numChunksFile.containsKey(fileID) ? numChunksFile.get(fileID) : PeerService.ERROR;
+        return numChunksFile.getOrDefault(fileID, PeerService.ERROR);
     }
 
     /**
@@ -239,7 +238,7 @@ public class ChunkManager {
     public byte[] getChunkData(String fileID, String chunkNo) throws IOException {
 
         String filename = fileID + "_" + chunkNo;
-        FileInputStream chunkFile = null;
+        FileInputStream chunkFile;
 
         chunkFile = new FileInputStream(chunksPath + "/" + filename);
 

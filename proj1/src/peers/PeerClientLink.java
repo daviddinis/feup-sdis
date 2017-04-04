@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat;
 
 public class PeerClientLink extends UnicastRemoteObject implements InitiatorInterface {
 
-    private PeerService peer;
+    private final PeerService peer;
 
     public PeerClientLink(PeerService peer) throws RemoteException {
         this.peer = peer;
@@ -47,6 +47,8 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         String fileId = getFileHash(filepath);
 
 
+        if(file == null)
+            throw new IOException("PeerClientLink :: backup :: Could not open file");
         while (file.available() > 0) {
             readableBytes = file.available();
 
