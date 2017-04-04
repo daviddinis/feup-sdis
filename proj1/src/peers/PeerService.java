@@ -198,11 +198,7 @@ public class PeerService {
             }
         };
 
-        ExecutorService service = Executors.newFixedThreadPool(10);
-
-        service.execute(task);
-
-        //new Thread(task).start();
+        new Thread(task).start();
     }
 
     /**
@@ -362,8 +358,8 @@ public class PeerService {
             byte[] headerBytes = header.getBytes();
             controlChannel.sendMessage(headerBytes);
         };
-        ExecutorService service = Executors.newFixedThreadPool(10);
-        service.execute(task);
+
+        new Thread(task).start();
     }
 
     /**

@@ -48,11 +48,7 @@ public class PeerChannel {
             }
         };
 
-        ExecutorService service = Executors.newFixedThreadPool(10);
-
-        service.execute(task);
-
-        //new Thread(task).start();
+        new Thread(task).start();
     }
 
     public boolean sendMessage(byte[] message) {
@@ -70,14 +66,13 @@ public class PeerChannel {
     private void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
         byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
-        //Runnable task = () -> {
+        Runnable task = () -> {
         peer.messageHandler(buffer, packet.getLength());
-        //};
+        };
 
-        //ExecutorService service = Executors.newFixedThreadPool(10);
+        ExecutorService service = Executors.newFixedThreadPool(10);
 
-        //service.execute(task);
+        service.execute(task);
 
-        //new Thread(task).start();
     }
 }
