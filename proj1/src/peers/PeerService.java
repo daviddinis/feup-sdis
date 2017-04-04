@@ -386,7 +386,7 @@ public class PeerService {
                 counter++;
                 multiplier *= 2;
             }
-            while (!fileRestorer.getRestoredChunks().containsKey(chunkNo));
+            while (!fileRestorer.getRestoredChunks().containsKey(chunkNo) && restoredChunksObjects.containsKey(fileId));
         };
 
         new Thread(task).start();
