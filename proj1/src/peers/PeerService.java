@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -219,7 +220,19 @@ public class PeerService {
      */
     public void updateAvailableSpace(int maxSpace){
         availableSpace = maxSpace;
-        chunkManager.reclaimSpace(availableSpace);
+        ArrayList<String> deletedChunks = chunkManager.reclaimSpace(availableSpace);
+        if(deletedChunks.isEmpty()) //no chunks were deleted
+            return;
+
+        for(String deletedChunk : deletedChunks){
+            String[] deletedChunkInfo = deletedChunk.split("_");
+            String fileID = deletedChunkInfo[0];
+            String chunkNo = deletedChunkInfo[1];
+
+            String header = makeHeader("REMOVED", protocolVersion, serverId, fileID, chunkNo);
+            controlChannel.sendMessage(header.getBytes());
+            printHeader(header,true);
+        }
     }
     /**
      * Called when a message is received,
@@ -377,6 +390,7 @@ public class PeerService {
 
             byte[] headerBytes = header.getBytes();
             controlChannel.sendMessage(headerBytes);
+            printHeader(header,true);
         };
         ExecutorService service = Executors.newFixedThreadPool(10);
         service.execute(task);

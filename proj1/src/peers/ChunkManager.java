@@ -258,20 +258,32 @@ public class ChunkManager {
         return chunkData;
     }
 
-    public void reclaimSpace(long availableSpace){
-       if(getOccupiedSpace() < availableSpace)
-           return;
+    /**
+     * Checks if the space made available for chunks is enough for the currently stored chunks,
+     * if it is, return, if not, delete the smallest chunk and check again
+     *
+     * @param availableSpace maximum space to be occupied by the stored chunks
+     * @return ArrayList with the names of the deleted files
+     */
+    public ArrayList<String> reclaimSpace(long availableSpace){
+        File chunkDir = new File(chunksPath);
+        ArrayList<String> deletedChunks = new ArrayList<>();
 
-       File chunkDir = new File(chunksPath);
-       File[] chunks = chunkDir.listFiles();
-       if (chunks == null)
-           return;
+       while(getOccupiedSpace() < availableSpace) {
 
-       File smallestChunk = chunks[0];
-       for(File chunk : chunks){
-           if (chunk.length() < smallestChunk.length())
-               smallestChunk = chunk;
+           File[] chunks = chunkDir.listFiles();
+           if (chunks == null)
+               break;
+
+           File smallestChunk = chunks[0];
+           for (File chunk : chunks) {
+               if (chunk.length() < smallestChunk.length())
+                   smallestChunk = chunk;
+           }
+           deletedChunks.add(chunkDir.getName());
+           smallestChunk.delete();
        }
+       return deletedChunks;
     }
 
     /**
