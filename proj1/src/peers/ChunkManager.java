@@ -41,6 +41,7 @@ public class ChunkManager {
 
     private final String chunksPath;
     private final String serverId;
+    private long occupiedSpace;
 
     public ChunkManager(String serverId, String chunksPath) {
 
@@ -50,6 +51,7 @@ public class ChunkManager {
         storedChunks = new ConcurrentHashMap<>();
         chunkMap = new ConcurrentHashMap<>();
         numChunksFile = new ConcurrentHashMap<>();
+        occupiedSpace = 0;
     }
 
     /**
@@ -127,6 +129,7 @@ public class ChunkManager {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
         return registerStorage(protocolVersion, this.serverId, fileID, chunkNo);
     }
 
@@ -157,7 +160,6 @@ public class ChunkManager {
             }
             chunkPeers.add(sender);
         }
-
         return true;
     }
 
@@ -254,5 +256,34 @@ public class ChunkManager {
         chunkFile.read(chunkData);
 
         return chunkData;
+    }
+
+    public void reclaimSpace(long availableSpace){
+       if(getOccupiedSpace() < availableSpace)
+           return;
+
+       File chunkDir = new File(chunksPath);
+       File[] chunks = chunkDir.listFiles();
+       if (chunks == null)
+           return;
+
+       File smallestChunk = chunks[0];
+       for(File chunk : chunks){
+           if (chunk.length() < smallestChunk.length())
+               smallestChunk = chunk;
+       }
+    }
+
+    /**
+     * Get the space occupied by the chunks this peer is storing
+     * @return occupied space, in bytes
+     */
+    public long getOccupiedSpace(){
+        File chunkDir = new File(chunksPath);
+        long occupiedSpace = 0;
+        for(File file : chunkDir.listFiles()){
+            occupiedSpace += file.length();
+        }
+        return occupiedSpace;
     }
 }

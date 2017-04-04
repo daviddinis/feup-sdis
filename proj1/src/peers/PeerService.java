@@ -15,9 +15,9 @@ public class PeerService {
 
     public static final int CHUNK_SIZE = 64000;
     public static final int ERROR = -1;
-    private static final String CRLF = "\r\n";
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
+    private static final String CRLF = "\r\n";
     private final String serverId;
     private final String protocolVersion;
 
@@ -35,6 +35,12 @@ public class PeerService {
      * value = true if the file is restored false otherwise
      */
     private ConcurrentHashMap<String, FileRestorer> restoredChunksObjects;
+
+    /**
+     * space available to store chunks
+     * in 10^3 bytes
+     **/
+    private long availableSpace;
 
 
     public PeerService(String serverId, String protocolVersion, String serviceAccessPoint, InetAddress mcAddr, int mcPort, InetAddress mdbAddr, int mdbPort,
@@ -86,6 +92,8 @@ public class PeerService {
         restoredChunksObjects = new ConcurrentHashMap<>();
 
         chunkManager = new ChunkManager(serverId, chunksPath);
+
+        availableSpace = 1000;
     }
 
     /**
@@ -205,6 +213,14 @@ public class PeerService {
         //new Thread(task).start();
     }
 
+    /**
+     * Updates the space this peer has to store chunks, deleting chunks if necessary
+     * @param maxSpace new maximum available space
+     */
+    public void updateAvailableSpace(int maxSpace){
+        availableSpace = maxSpace;
+        chunkManager.reclaimSpace(availableSpace);
+    }
     /**
      * Called when a message is received,
      * checks the instruction and calls the appropriate protocol

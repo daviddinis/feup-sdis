@@ -108,8 +108,10 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
     }
 
     @Override
-    public void reclaim(int maxDiskSpace) throws RemoteException {
-
+    public void reclaim(int maxAvailableBytes) throws RemoteException {
+        if(maxAvailableBytes < 0)
+            throw new IllegalArgumentException("Invalid arguments for reclaim");
+        peer.updateAvailableSpace(maxAvailableBytes);
     }
 
     @Override
