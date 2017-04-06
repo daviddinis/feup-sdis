@@ -46,7 +46,6 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         String fileId = getFileHash(filepath);
 
-
         if(file == null)
             throw new IOException("PeerClientLink :: backup :: Could not open file");
         while (file.available() > 0) {
@@ -103,13 +102,18 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
     public void delete(String filepath) throws IOException {
         if (filepath == null)
             throw new IllegalArgumentException("Invalid arguments for delete");
+
+        System.out.println("New delete request for file " + filepath);
+
         String fileID = getFileHash(filepath);
         peer.requestFileDeletion(fileID);
     }
 
     @Override
-    public void reclaim(int maxDiskSpace) throws RemoteException {
-
+    public void reclaim(int maxAvailableBytes) throws RemoteException {
+        if(maxAvailableBytes < 0)
+            throw new IllegalArgumentException("Invalid arguments for reclaim");
+        peer.updateAvailableSpace(maxAvailableBytes);
     }
 
     @Override
