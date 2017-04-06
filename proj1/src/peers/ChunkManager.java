@@ -125,16 +125,25 @@ public class ChunkManager {
             return false;
 
         try {
+
+            Random random = new Random(System.currentTimeMillis());
+            long waitTime = random.nextInt(400);
+            Thread.sleep(waitTime);
+
             // Check if the chunk is already stored
             if (!hasChunk(fileID, Integer.parseInt(chunkNo))) {
+                if(chunkMap.containsKey(fileID+"_"+chunkNo)){
+
+                    //verifying if the replication regree desire by the peer was already reached
+                    if(chunkMap.get(fileID+"_"+chunkNo).size() >= Integer.parseInt(replicationDegree)){
+                        return false;
+                    }
+                }
                 registerChunk(fileID, Integer.parseInt(chunkNo), Integer.parseInt(replicationDegree));
                 String filename = fileID + "_" + chunkNo;
                 FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
                 chunkFile.write(chunkData);
             }
-            Random random = new Random(System.currentTimeMillis());
-            long waitTime = random.nextInt(400);
-            Thread.sleep(waitTime);
         } catch (IOException e) {
             System.err.println("IOException :: PeerService :: Unable to backup chunk.");
             return false;

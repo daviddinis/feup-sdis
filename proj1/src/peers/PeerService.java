@@ -45,7 +45,6 @@ public class PeerService {
 
     private final ArrayList<String> myFileIDs;
 
-
     public PeerService(String serverId, String protocolVersion, String serviceAccessPoint, InetAddress mcAddr, int mcPort, InetAddress mdbAddr, int mdbPort,
                        InetAddress mdrAddr, int mdrPort) throws IOException {
 
