@@ -1,18 +1,20 @@
 package peers;
 
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by epassos on 3/29/17.
  */
 public class ChunkManager {
+
+    public static final String CHUNK_MAP_FILENAME = "chunksMap.txt";
 
     /**
      * stores the number of chunks every file has
@@ -60,8 +62,41 @@ public class ChunkManager {
         chunkMap = new ConcurrentHashMap<>();
         numChunksFile = new ConcurrentHashMap<>();
         occupiedSpace = 0;
-
         restoredChunkList = new ArrayList<>();
+
+        chunkMapFileStuff();
+    }
+
+    public void chunkMapFileStuff(){
+
+        String filepath = serverId+"/"+CHUNK_MAP_FILENAME;
+
+        File file = new File(filepath);
+
+        try {
+            file.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        ScheduledThreadPoolExecutor scheduledPool = new ScheduledThreadPoolExecutor(1);
+        scheduledPool.scheduleWithFixedDelay(() -> {
+            try {
+                FileOutputStream fileDescriptor = new FileOutputStream(filepath,false);
+                chunkMap.forEach((key,value)->{
+                    try {
+                        fileDescriptor.write((key+":"+value.size()).getBytes());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("Escrevi: " +key+":"+value.size());
+                });
+                fileDescriptor.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     /**
