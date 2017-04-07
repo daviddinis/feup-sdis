@@ -510,9 +510,6 @@ public class PeerService {
             printHeader(header, true);
             //TODO random time uniformly distributed
         }
-        else{
-            System.out.println("Não vou enviar a chunk message");
-        }
 
         return true;
     }
