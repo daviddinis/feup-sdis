@@ -67,6 +67,9 @@ public class ChunkManager {
         chunkMapFileStuff();
     }
 
+    /**
+     * Deals with the chunk map file, create it and update it
+     */
     public void chunkMapFileStuff(){
 
         String filepath = serverId+"/"+CHUNK_MAP_FILENAME;
