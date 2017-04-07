@@ -331,16 +331,19 @@ public class PeerService {
                 printHeader(header, false);
 
                 String fileID = messageHeader[3];
-
-                if (!requestedRestore(fileID))
-                    break;
-
                 String chunkNo = messageHeader[4];
-                byte[] chunk = new byte[input.available()];
-                input.read(chunk, 0, input.available());
 
-                FileRestorer fileRestorer = restoredChunksObjects.get(fileID);
-                fileRestorer.processRestoredChunks(chunkNo, chunk);
+                if (requestedRestore(fileID)){
+                    byte[] chunk = new byte[input.available()];
+                    input.read(chunk, 0, input.available());
+
+                    FileRestorer fileRestorer = restoredChunksObjects.get(fileID);
+                    fileRestorer.processRestoredChunks(chunkNo, chunk);
+                }
+                else {
+                    chunkManager.registerChunkMessage(fileID,chunkNo);
+                }
+
                 break;
             }
             case "DELETE": {
@@ -502,9 +505,15 @@ public class PeerService {
             e.printStackTrace();
         }
 
-        dataRestoreChannel.sendMessage(buf);
-        printHeader(header, true);
-        //TODO random time uniformly distributed
+        if(chunkManager.canISendChunkMessage(fileID,chunkNo)){
+            dataRestoreChannel.sendMessage(buf);
+            printHeader(header, true);
+            //TODO random time uniformly distributed
+        }
+        else{
+            System.out.println("Não vou enviar a chunk message");
+        }
+
         return true;
     }
 

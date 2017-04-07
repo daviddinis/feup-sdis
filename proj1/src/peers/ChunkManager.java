@@ -40,6 +40,13 @@ public class ChunkManager {
      */
     private final ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
 
+    /**
+     * when the peer receives a CHUNK message verifies if he has that chunk,
+     * and if he has then he put on this arraylist
+     * String will be <fileID>_<chunkNo>
+     */
+    private final ArrayList<String> restoredChunkList;
+
     private final String chunksPath;
     private final String serverId;
     private long occupiedSpace;
@@ -53,6 +60,8 @@ public class ChunkManager {
         chunkMap = new ConcurrentHashMap<>();
         numChunksFile = new ConcurrentHashMap<>();
         occupiedSpace = 0;
+
+        restoredChunkList = new ArrayList<>();
     }
 
     /**
@@ -346,5 +355,41 @@ public class ChunkManager {
             occupiedSpace += file.length();
         }
         return occupiedSpace;
+    }
+
+    /**
+     * Verifies if a given chunk from a file is stored on the peer,
+     * and if this is the case, the peer adds to the restoreChunkList
+     * @param fileID id from the file
+     * @param chunkNo number of the chunk
+     * @return true if it has the chunk, false otherwise
+     */
+    public boolean registerChunkMessage(String fileID, String chunkNo){
+
+        if(!hasChunk(fileID, Integer.parseInt(chunkNo))){
+            return false;
+        }
+
+        if(!restoredChunkList.contains(fileID+"_"+chunkNo)){
+            restoredChunkList.add(fileID+"_"+chunkNo);
+        }
+
+        return true;
+    }
+
+    /**
+     * verifies if a chunk message was already sent for that specific chunk
+     * @param fileID id from the file
+     * @param chunkNo number of the chunk
+     * @return true if he can send the message, false otherwise
+     */
+    public boolean canISendChunkMessage(String fileID, String chunkNo){
+
+        if(restoredChunkList.contains(fileID+"_"+chunkNo)){
+            restoredChunkList.remove(fileID+"_"+chunkNo);
+            return false;
+        }
+
+        return true;
     }
 }
