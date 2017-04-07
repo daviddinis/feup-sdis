@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
@@ -19,6 +20,8 @@ public class PeerService {
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
     private static final String CRLF = "\r\n";
+    private static final String RESTORE_FILE_CHANNEL_ADR = "224.0.0.5";
+
     private final String serverId;
     private final String protocolVersion;
 
@@ -419,7 +422,14 @@ public class PeerService {
      * @param fileId  id of the file to be restored
      * @param chunkNo Chunk number
      */
-    public void requestChunkRestore(String fileId, int chunkNo) {
+    public void requestChunkRestore(String fileId, int chunkNo) throws IOException {
+
+        if(protocolVersion == "1.2"){
+            InetAddress adr = null;
+            adr = InetAddress.getByName(RESTORE_FILE_CHANNEL_ADR);
+            PeerChannel restoreFileChannel = new PeerChannel(adr,Integer.parseInt(serverId),this);
+            restoreFileChannel.receiveMessage();
+        }
 
         Runnable task = () -> {
             int counter = 1, multiplier = 1;
