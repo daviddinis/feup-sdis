@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 public class ChunkManager {
 
     public static final String CHUNK_MAP_FILENAME = "chunksMap.txt";
+    public static final int MAX_SLEEP_TIME = 400;
 
     /**
      * stores the number of chunks every file has
@@ -176,8 +177,8 @@ public class ChunkManager {
             return true;
 
         try {
-            Random random = new Random(System.currentTimeMillis());
-            long waitTime = random.nextInt(400);
+            Random random = new Random();
+            long waitTime = random.nextInt(MAX_SLEEP_TIME);
             Thread.sleep(waitTime);
 
             if(chunkMap.containsKey(fileID+"_"+chunkNo)){
