@@ -1,18 +1,20 @@
 package peers;
 
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by epassos on 3/29/17.
  */
 public class ChunkManager {
+
+    public static final String CHUNK_MAP_FILENAME = "chunksMap.txt";
 
     /**
      * stores the number of chunks every file has
@@ -40,6 +42,13 @@ public class ChunkManager {
      */
     private final ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
 
+    /**
+     * when the peer receives a CHUNK message verifies if he has that chunk,
+     * and if he has then he put on this arraylist
+     * String will be <fileID>_<chunkNo>
+     */
+    private final ArrayList<String> restoredChunkList;
+
     private final String chunksPath;
     private final String serverId;
     private long occupiedSpace;
@@ -53,6 +62,44 @@ public class ChunkManager {
         chunkMap = new ConcurrentHashMap<>();
         numChunksFile = new ConcurrentHashMap<>();
         occupiedSpace = 0;
+        restoredChunkList = new ArrayList<>();
+
+        chunkMapFileStuff();
+    }
+
+    /**
+     * Deals with the chunk map file, create it and update it
+     */
+    public void chunkMapFileStuff(){
+
+        String filepath = serverId+"/"+CHUNK_MAP_FILENAME;
+
+        File file = new File(filepath);
+
+        try {
+            file.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        ScheduledThreadPoolExecutor scheduledPool = new ScheduledThreadPoolExecutor(1);
+        scheduledPool.scheduleWithFixedDelay(() -> {
+            try {
+                FileOutputStream fileDescriptor = new FileOutputStream(filepath,false);
+                chunkMap.forEach((key,value)->{
+                    try {
+                        fileDescriptor.write((key+":"+value.size()).getBytes());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("Escrevi: " +key+":"+value.size());
+                });
+                fileDescriptor.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     /**
@@ -346,5 +393,41 @@ public class ChunkManager {
             occupiedSpace += file.length();
         }
         return occupiedSpace;
+    }
+
+    /**
+     * Verifies if a given chunk from a file is stored on the peer,
+     * and if this is the case, the peer adds to the restoreChunkList
+     * @param fileID id from the file
+     * @param chunkNo number of the chunk
+     * @return true if it has the chunk, false otherwise
+     */
+    public boolean registerChunkMessage(String fileID, String chunkNo){
+
+        if(!hasChunk(fileID, Integer.parseInt(chunkNo))){
+            return false;
+        }
+
+        if(!restoredChunkList.contains(fileID+"_"+chunkNo)){
+            restoredChunkList.add(fileID+"_"+chunkNo);
+        }
+
+        return true;
+    }
+
+    /**
+     * verifies if a chunk message was already sent for that specific chunk
+     * @param fileID id from the file
+     * @param chunkNo number of the chunk
+     * @return true if he can send the message, false otherwise
+     */
+    public boolean canISendChunkMessage(String fileID, String chunkNo){
+
+        if(restoredChunkList.contains(fileID+"_"+chunkNo)){
+            restoredChunkList.remove(fileID+"_"+chunkNo);
+            return false;
+        }
+
+        return true;
     }
 }
