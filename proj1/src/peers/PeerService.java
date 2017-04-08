@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
@@ -19,12 +20,21 @@ public class PeerService {
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
     private static final String CRLF = "\r\n";
+    private static final String RESTORE_FILE_CHANNEL_ADR = "224.0.0.5";
+    private static final int FIRST_DEFAULT_PORT = 1024;
+    private static final int LAST_AVAILABLE_PORT = 65535;
+
     private final String serverId;
     private final String protocolVersion;
 
     private PeerChannel controlChannel;
     private PeerChannel dataBackupChannel;
     private PeerChannel dataRestoreChannel;
+
+    /**
+     * Channel used on the restore protocol enhancement
+     */
+    private PeerChannel restoreFileChannel;
 
     private String restoredFilesPath;
 
@@ -99,6 +109,15 @@ public class PeerService {
 
         //6 400 000 bytes (100 full chunks, ~6MB)
         availableSpace = 6400;
+
+        // for restore enhancement
+        if(protocolVersion.equals("1.2")){
+            InetAddress adr = null;
+            adr = InetAddress.getByName(RESTORE_FILE_CHANNEL_ADR);
+            int port = computePortWithServerID(serverId);
+            restoreFileChannel = new PeerChannel(adr,port,this);
+            restoreFileChannel.receiveMessage();
+        }
     }
 
     /**
@@ -423,7 +442,7 @@ public class PeerService {
      * @param fileId  id of the file to be restored
      * @param chunkNo Chunk number
      */
-    public void requestChunkRestore(String fileId, int chunkNo) {
+    public void requestChunkRestore(String fileId, int chunkNo) throws IOException {
 
         Runnable task = () -> {
             int counter = 1, multiplier = 1;
@@ -510,7 +529,21 @@ public class PeerService {
         }
 
         if(chunkManager.canSendChunkMessage(fileID,chunkNo)){
-            dataRestoreChannel.sendMessage(buf);
+
+            if(protocolVersion.equals("1.2")){
+                InetAddress adr = null;
+                try {
+                    adr = InetAddress.getByName(RESTORE_FILE_CHANNEL_ADR);
+                    int port = computePortWithServerID(senderID);
+                    restoreFileChannel = new PeerChannel(adr,port,this);
+                    restoreFileChannel.sendMessage(buf);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            else {
+                dataRestoreChannel.sendMessage(buf);
+            }
             printHeader(header, true);
             //TODO random time uniformly distributed
         }
@@ -539,5 +572,23 @@ public class PeerService {
 
     public void markRestored(String fileID) {
         restoredChunksObjects.remove(fileID);
+    }
+
+    public int computePortWithServerID(String id){
+
+        int idInteger;
+
+        try{
+            idInteger = Integer.parseInt(id);
+            idInteger += FIRST_DEFAULT_PORT;
+        } catch (NumberFormatException e){
+            idInteger = FIRST_DEFAULT_PORT;
+        }
+
+        if(idInteger > LAST_AVAILABLE_PORT){
+            idInteger = LAST_AVAILABLE_PORT;
+        }
+
+        return idInteger;
     }
 }
