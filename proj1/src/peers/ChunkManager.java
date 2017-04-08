@@ -3,12 +3,9 @@ package peers;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by epassos on 3/29/17.
@@ -296,7 +293,7 @@ public class ChunkManager {
      */
     public int getReplicationDegree(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
-        return chunkMap.get(key) == null ? chunkMap.get(key).size() : -1;
+        return chunkMap.containsKey(key) ? chunkMap.get(key).size() : -1;
     }
 
     public boolean registerNumChunks(String fileID, int numChunks) {
