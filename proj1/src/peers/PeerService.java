@@ -528,7 +528,7 @@ public class PeerService {
             e.printStackTrace();
         }
 
-        if(chunkManager.canISendChunkMessage(fileID,chunkNo)){
+        if(chunkManager.canSendChunkMessage(fileID,chunkNo)){
 
             if(protocolVersion.equals("1.2")){
                 InetAddress adr = null;
