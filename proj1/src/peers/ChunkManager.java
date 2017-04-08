@@ -2,9 +2,8 @@ package peers;
 
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Properties;
-import java.util.Random;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -44,9 +43,8 @@ public class ChunkManager {
     /**
      * stores the desired replication degree for every file the
      * peer has stored or has chunks of
-     * TODO change name to desiredFileReplicationDegrees
      */
-    private final ConcurrentHashMap<String, Integer> fileReplicationDegrees;
+    private final ConcurrentHashMap<String, Integer> desiredFileReplicationDegrees;
 
     /**
      * registers the chunk number of the stored chunks
@@ -70,7 +68,7 @@ public class ChunkManager {
 
         this.serverId = serverId;
         this.chunksPath = chunksPath;
-        fileReplicationDegrees = new ConcurrentHashMap<>();
+        desiredFileReplicationDegrees = new ConcurrentHashMap<>();
         storedChunks = new ConcurrentHashMap<>();
         chunkMap = new ConcurrentHashMap<>();
         numChunksFile = new ConcurrentHashMap<>();
@@ -113,10 +111,10 @@ public class ChunkManager {
      * @param replicationDegree desired replication degree for the file
      */
     public void registerFile(String fileID, int replicationDegree) {
-        if (fileReplicationDegrees.get(fileID) != null) {
-            fileReplicationDegrees.remove(fileID);
+        if (desiredFileReplicationDegrees.get(fileID) != null) {
+            desiredFileReplicationDegrees.remove(fileID);
         }
-        fileReplicationDegrees.put(fileID, replicationDegree);
+        desiredFileReplicationDegrees.put(fileID, replicationDegree);
     }
 
     /**
@@ -127,7 +125,7 @@ public class ChunkManager {
      * @return desired replication degree of the file
      */
     public int getDesiredReplicationDegree(String fileID){
-        return fileReplicationDegrees.getOrDefault(fileID,-1);
+        return desiredFileReplicationDegrees.getOrDefault(fileID,-1);
     }
 
     /**
@@ -235,8 +233,8 @@ public class ChunkManager {
             }
             chunkPeers.add(sender);
             perceivedChunkRepDeg.replace(chunkKey, Integer.toString(chunkPeers.size()));
-            saveToFile();
         }
+        saveToFile();
         return true;
     }
 
@@ -324,24 +322,33 @@ public class ChunkManager {
         ArrayList<Integer> fileChunks = storedChunks.get(fileID);
         if (fileChunks == null) {  // peer has no chunks belonging to this file
             System.out.format("This peer has no chunks belonging to the file with file ID %s", fileID);
-            return;
         }
 
-        for (Integer fileChunk : fileChunks) {
-            String chunkName = fileID + '_' + Integer.toString(fileChunk);
+        else {
+            for (Integer fileChunk : fileChunks) {
+                String chunkName = fileID + '_' + Integer.toString(fileChunk);
 
-            chunkMap.remove(chunkName);
-            perceivedChunkRepDeg.remove(chunkName);
-            fileReplicationDegrees.remove(fileID);
-            saveToFile();
 
-            String chunkPath = chunksPath + '/' + chunkName;
-            File chunk = new File(chunkPath);
-            if (chunk.delete())
-                System.out.format("Chunk %d, belonging to file %s deleted", fileChunk, fileID);
+                String chunkPath = chunksPath + '/' + chunkName;
+                File chunk = new File(chunkPath);
+                if (chunk.delete())
+                    System.out.format("Chunk %d, belonging to file %s deleted", fileChunk, fileID);
+            }
+            storedChunks.remove(fileID);
         }
 
-        storedChunks.remove(fileID);
+        for(Map.Entry<String,ArrayList<Integer>> entry : chunkMap.entrySet()){
+            if(entry.getKey().startsWith(fileID)) {
+                chunkMap.remove(entry.getKey());
+                perceivedChunkRepDeg.remove(entry.getKey());
+            }
+        }
+
+        if(desiredFileReplicationDegrees.containsKey(fileID))
+            desiredFileReplicationDegrees.remove(fileID);
+
+
+        saveToFile();
     }
 
     public byte[] getChunkData(String fileID, String chunkNo) throws IOException {

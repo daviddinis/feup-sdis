@@ -417,6 +417,7 @@ public class PeerService {
      */
     public void requestFileDeletion(String fileID) {
         myFileIDs.remove(fileID);
+        chunkManager.deleteFile(fileID);
         String message = makeHeader("DELETE", protocolVersion, serverId, fileID);
         controlChannel.sendMessage(message.getBytes());
         printHeader(message, true);
