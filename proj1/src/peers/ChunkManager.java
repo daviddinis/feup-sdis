@@ -369,7 +369,7 @@ public class ChunkManager {
     public void deleteFile(String fileID) {
         ArrayList<Integer> fileChunks = storedChunks.get(fileID);
         if (fileChunks == null) {  // peer has no chunks belonging to this file
-            System.out.format("This peer has no chunks belonging to the file with file ID %s", fileID);
+            System.out.format("This peer has no chunks belonging to the file with file ID %s\n", fileID);
         }
 
         else {
@@ -380,7 +380,7 @@ public class ChunkManager {
                 String chunkPath = chunksPath + '/' + chunkName;
                 File chunk = new File(chunkPath);
                 if (chunk.delete())
-                    System.out.format("Chunk %d, belonging to file %s deleted", fileChunk, fileID);
+                    System.out.format("Chunk %d, belonging to file %s deleted\n", fileChunk, fileID);
             }
             storedChunks.remove(fileID);
         }

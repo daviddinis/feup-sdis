@@ -243,7 +243,7 @@ public class PeerService {
             return;
         }
 
-        System.out.format("%d chunks were deleted", deletedChunks.size());
+        System.out.format("%d chunks were deleted\n", deletedChunks.size());
         for(String deletedChunk : deletedChunks){
             String[] deletedChunkInfo = deletedChunk.split("_");
             String fileID = deletedChunkInfo[0];
@@ -402,7 +402,7 @@ public class PeerService {
                 break;
             }
             default: {
-                System.out.format("Unrecognized operation: %s", messageType);
+                System.out.format("Unrecognized operation: %s\n", messageType);
                 break;
             }
         }
