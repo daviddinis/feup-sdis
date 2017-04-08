@@ -2,28 +2,25 @@ package peers;
 
 
 import java.io.*;
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Created by epassos on 3/29/17.
- */
 public class ChunkManager {
 
-    public static final String CHUNK_MAP_FILENAME = ".chunk_info";
-    public static final int MAX_SLEEP_TIME = 400;
+    private static final String CHUNK_MAP_FILENAME = "chunk_info";
+    private static final String STATE_FILENAME = ".peer_data";
+    private static final int MAX_SLEEP_TIME = 400;
     /**
      * stores the number of chunks every file has
      */
-    private final ConcurrentHashMap<String, Integer> numChunksFile;
+    private ConcurrentHashMap<String, Integer> numChunksFile;
 
     /**
      * registers the peers that have stored chunks
      * key = <fileID>_<ChunkNo>
      * value = array with the peer id of the peers that have stored that chunk
      */
-    private final ConcurrentHashMap<String, ArrayList<Integer>> chunkMap;
+    private ConcurrentHashMap<String, ArrayList<Integer>> chunkMap;
 
     /**
      * registers the perceived replication degree of the chunks,
@@ -32,33 +29,32 @@ public class ChunkManager {
      * key = <fileID>_<ChunkNo>
      * value = Perceived replication degree for the chunk
      */
-    private final ConcurrentHashMap<String, String> perceivedChunkRepDeg;
-
-    /**
-     *
-     */
-    private Properties chunkRepDegProperties;
-
+    private ConcurrentHashMap<String, String> perceivedChunkRepDeg;
 
     /**
      * stores the desired replication degree for every file the
      * peer has stored or has chunks of
      */
-    private final ConcurrentHashMap<String, Integer> desiredFileReplicationDegrees;
+    private ConcurrentHashMap<String, Integer> desiredFileReplicationDegrees;
 
     /**
      * registers the chunk number of the stored chunks
      * key = <fileID>
      * value = array with the chunk numbers of the stored chunks
      */
-    private final ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
+    private ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
 
     /**
      * when the peer receives a CHUNK message verifies if he has that chunk,
      * and if he has then he put on this arraylist
      * String will be <fileID>_<chunkNo>
      */
-    private final ArrayList<String> restoredChunkList;
+    private ArrayList<String> restoredChunkList;
+
+    /**
+     * used to write perceived chunk replication degrees to a file
+     */
+    private Properties chunkRepDegProperties;
 
     private final String chunksPath;
     private final String serverId;
@@ -66,15 +62,28 @@ public class ChunkManager {
 
     public ChunkManager(String serverId, String chunksPath) {
 
+        /*
+        todo: on startup
+        check what chunks are stored -> scan the directory? - can use other properties
+        get the desired file replication degrees -> can use Properties
+        get the chunk map -> Serialize?
+        get the num chunks per file -> can use Properties
+        get the perceived chunk rep deg -> can use Properties
+        USE OBJECT OUTPUT STREAMS
+         */
         this.serverId = serverId;
         this.chunksPath = chunksPath;
-        desiredFileReplicationDegrees = new ConcurrentHashMap<>();
-        storedChunks = new ConcurrentHashMap<>();
-        chunkMap = new ConcurrentHashMap<>();
-        numChunksFile = new ConcurrentHashMap<>();
-        perceivedChunkRepDeg = new ConcurrentHashMap<>();
-        occupiedSpace = 0;
-        restoredChunkList = new ArrayList<>();
+
+        if(!loadState()) {
+            desiredFileReplicationDegrees = new ConcurrentHashMap<>();
+            storedChunks = new ConcurrentHashMap<>();
+            chunkMap = new ConcurrentHashMap<>();
+            numChunksFile = new ConcurrentHashMap<>();
+            perceivedChunkRepDeg = new ConcurrentHashMap<>();
+            occupiedSpace = 0;
+            restoredChunkList = new ArrayList<>();
+        }
+
         chunkRepDegProperties = new Properties();
 
         /* Create chunk replication degree file */
@@ -91,12 +100,50 @@ public class ChunkManager {
     /**
      * Saves the chunk replication degrees to a file
      */
-    private boolean saveToFile(){
+    private boolean saveReplicationDegrees(){
         chunkRepDegProperties.putAll(perceivedChunkRepDeg);
         try {
             chunkRepDegProperties.store(new FileOutputStream(serverId + '/' + CHUNK_MAP_FILENAME),"FileID_ChunkNo=PerceivedReplicationDegree");
         } catch (IOException e) {
             System.err.println("Failed to write to chunk file");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Writes the state of the peer to a file
+     * @return true if write was successful
+     */
+    private boolean saveState(){
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(serverId + '/' + STATE_FILENAME));
+            oos.writeObject(numChunksFile);
+            oos.writeObject(chunkMap);
+            oos.writeObject(perceivedChunkRepDeg);
+            oos.writeObject(desiredFileReplicationDegrees);
+            oos.writeObject(storedChunks);
+            oos.writeObject(restoredChunkList);
+            oos.close();
+        } catch (IOException e) {
+            System.err.println("Unable to open state file");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean loadState(){
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId+'/'+STATE_FILENAME));
+            numChunksFile = (ConcurrentHashMap<String, Integer>) ois.readObject();
+            chunkMap = (ConcurrentHashMap<String,ArrayList<Integer>>) ois.readObject();
+            perceivedChunkRepDeg = (ConcurrentHashMap<String,String>) ois.readObject();
+            desiredFileReplicationDegrees = (ConcurrentHashMap<String,Integer>) ois.readObject();
+            storedChunks = (ConcurrentHashMap<String,ArrayList<Integer>>) ois.readObject();
+            restoredChunkList = (ArrayList<String>) ois.readObject();
+            occupiedSpace = getOccupiedSpace();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Unable to load peer state");
             return false;
         }
         return true;
@@ -200,7 +247,6 @@ public class ChunkManager {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
         return true;
     }
 
@@ -234,7 +280,8 @@ public class ChunkManager {
             chunkPeers.add(sender);
             perceivedChunkRepDeg.replace(chunkKey, Integer.toString(chunkPeers.size()));
         }
-        saveToFile();
+        saveReplicationDegrees();
+        saveState();
         return true;
     }
 
@@ -262,7 +309,8 @@ public class ChunkManager {
         Object sender = Integer.parseInt(senderID);
         chunkPeers.remove(sender);
         perceivedChunkRepDeg.replace(chunkKey,Integer.toString(chunkPeers.size()));
-        saveToFile();
+        saveReplicationDegrees();
+        saveState();
         return true;
     }
 
@@ -348,7 +396,8 @@ public class ChunkManager {
             desiredFileReplicationDegrees.remove(fileID);
 
 
-        saveToFile();
+        saveReplicationDegrees();
+        saveState();
     }
 
     public byte[] getChunkData(String fileID, String chunkNo) throws IOException {
