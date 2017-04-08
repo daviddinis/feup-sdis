@@ -195,6 +195,7 @@ public class PeerService {
             System.arraycopy(chunk, 0, buf, headerBytes.length, chunk.length);
 
             do {
+                    System.out.println(counter);
                 if (dataBackupChannel.sendMessage(buf))
                     printHeader(header, true);
 
@@ -308,10 +309,13 @@ public class PeerService {
 
                 byte[] chunk = new byte[input.available()];
                 input.read(chunk, 0, input.available());
-                chunkManager.storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk);
-                String response = makeHeader("STORED", protocolVersion, serverId, fileID, chunkNo);
-                controlChannel.sendMessage(response.getBytes());
-                printHeader(response, true);
+                if(chunkManager.storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk)) {
+                    String response = makeHeader("STORED", protocolVersion, serverId, fileID, chunkNo);
+                    chunkManager.registerChunk(fileID,chunkNo,replicationDegree);
+                    controlChannel.sendMessage(response.getBytes());
+                    chunkManager.registerStorage(protocolVersion, this.serverId, fileID, chunkNo);
+                    printHeader(response, true);
+                }
                 break;
             }
             case "STORED": {
