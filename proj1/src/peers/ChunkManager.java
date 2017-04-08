@@ -92,7 +92,6 @@ public class ChunkManager {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    System.out.println("Escrevi: " +key+":"+value.size());
                 });
                 fileDescriptor.close();
             } catch (IOException e) {
