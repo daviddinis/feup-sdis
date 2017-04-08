@@ -3,6 +3,7 @@ package peers;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -115,6 +116,19 @@ public class PeerService {
             restoreFileChannel = new PeerChannel(adr,port,this);
             restoreFileChannel.receiveMessage();
         }
+
+        try {
+            Thread.sleep(500);
+            sendGreeting();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendGreeting(){
+        String header = makeHeader("AHOY",protocolVersion,serverId);
+        controlChannel.sendMessage(header.getBytes());
+        printHeader(header,true);
     }
 
     /**
@@ -373,7 +387,16 @@ public class PeerService {
                 }
                 printHeader(header, false);
                 String fileID = messageHeader[3];
-                chunkManager.deleteFile(fileID);
+                ArrayList<String> deletedChunks = chunkManager.deleteFile(fileID);
+
+                if(protocolVersion.equals("1.3") && deletedChunks != null){
+                    for(String chunkNo : deletedChunks){
+                        String response = makeHeader("DELETED",protocolVersion,serverId,fileID,chunkNo);
+                        printHeader(response, true);
+                        controlChannel.sendMessage(response.getBytes());
+                    }
+                }
+
                 break;
             }
             case "REMOVED":{
@@ -401,12 +424,29 @@ public class PeerService {
                 }
                 break;
             }
+            case "DELETED": {
+                String fileID = messageHeader[3];
+                String chunkNo = messageHeader[4];
+                printHeader(header,false);
+                chunkManager.registerDeletion(senderID,fileID,chunkNo);
+                break;
+            }
+            case "AHOY": {
+                ArrayList<String> filesToDelete = chunkManager.checkDeletion(senderID);
+                if(filesToDelete == null)
+                    break;
+
+                for(String file : filesToDelete)
+                    requestFileDeletion(file);
+                break;
+            }
             default: {
                 System.out.format("Unrecognized operation: %s\n", messageType);
                 break;
             }
         }
     }
+
 
 
     /**
@@ -416,11 +456,23 @@ public class PeerService {
      * @param fileID file ID of the file to be deleted
      */
     public void requestFileDeletion(String fileID) {
-        myFileIDs.remove(fileID);
-        chunkManager.deleteFile(fileID);
-        String message = makeHeader("DELETE", protocolVersion, serverId, fileID);
-        controlChannel.sendMessage(message.getBytes());
-        printHeader(message, true);
+        if(myFileIDs.remove(fileID) || chunkManager.isMarkedForDeletion(fileID)){
+            chunkManager.markForDeletion(fileID);
+            chunkManager.deleteFile(fileID);
+            for(int i = 0; i < 5; i++){
+                String message = makeHeader("DELETE", protocolVersion, serverId, fileID);
+                controlChannel.sendMessage(message.getBytes());
+                printHeader(message, true);
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }
+        else{
+            System.out.format("File %s does not belong to this peer\n", fileID);
+        }
     }
 
 
