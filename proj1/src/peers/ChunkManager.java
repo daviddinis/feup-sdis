@@ -4,6 +4,7 @@ package peers;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -14,7 +15,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class ChunkManager {
 
-    public static final String CHUNK_MAP_FILENAME = "chunksMap.txt";
+    public static final String CHUNK_MAP_FILENAME = ".chunk_info";
 
     /**
      * stores the number of chunks every file has
@@ -27,6 +28,21 @@ public class ChunkManager {
      * value = array with the peer id of the peers that have stored that chunk
      */
     private final ConcurrentHashMap<String, ArrayList<Integer>> chunkMap;
+
+    /**
+     * registers the perceived replication degree of the chunks,
+     * used by Properties to write information to a file
+     *
+     * key = <fileID>_<ChunkNo>
+     * value = Perceived replication degree for the chunk
+     */
+    private final ConcurrentHashMap<String, String> perceivedChunkRepDeg;
+
+    /**
+     *
+     */
+    private Properties chunkRepDegProperties;
+
 
     /**
      * stores the desired replication degree for every file the
@@ -61,46 +77,36 @@ public class ChunkManager {
         storedChunks = new ConcurrentHashMap<>();
         chunkMap = new ConcurrentHashMap<>();
         numChunksFile = new ConcurrentHashMap<>();
+        perceivedChunkRepDeg = new ConcurrentHashMap<>();
         occupiedSpace = 0;
         restoredChunkList = new ArrayList<>();
+        chunkRepDegProperties = new Properties();
 
-        chunkMapFileStuff();
-    }
-
-    /**
-     * Deals with the chunk map file, create it and update it
-     */
-    public void chunkMapFileStuff(){
-
-        String filepath = serverId+"/"+CHUNK_MAP_FILENAME;
-
+        /* Create chunk replication degree file */
+        String filepath = serverId + "/" + CHUNK_MAP_FILENAME;
         File file = new File(filepath);
-
         try {
             file.createNewFile();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Unable to create chunk info file!");
+            System.exit(1);
         }
-
-        ScheduledThreadPoolExecutor scheduledPool = new ScheduledThreadPoolExecutor(1);
-        scheduledPool.scheduleWithFixedDelay(() -> {
-            try {
-                FileOutputStream fileDescriptor = new FileOutputStream(filepath,false);
-                chunkMap.forEach((key,value)->{
-                    try {
-                        fileDescriptor.write((key+":"+value.size()).getBytes());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    System.out.println("Escrevi: " +key+":"+value.size());
-                });
-                fileDescriptor.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-        }, 1, 1, TimeUnit.SECONDS);
     }
+
+    /**
+     * Saves the chunk replication degrees to a file
+     */
+    private boolean saveToFile(){
+        chunkRepDegProperties.putAll(perceivedChunkRepDeg);
+        try {
+            chunkRepDegProperties.store(new FileOutputStream(serverId + '/' + CHUNK_MAP_FILENAME),"FileID_ChunkNo=PerceivedReplicationDegree");
+        } catch (IOException e) {
+            System.err.println("Failed to write to chunk file");
+            return false;
+        }
+        return true;
+    }
+
 
     /**
      * Places a file in the replication degree hash map and
@@ -176,14 +182,16 @@ public class ChunkManager {
         if(hasChunk(fileID,Integer.parseInt(chunkNo)))
             return true;
 
+        String chunkKey = fileID+"_"+chunkNo;
+
         try {
             Random random = new Random(System.currentTimeMillis());
             long waitTime = random.nextInt(400);
             Thread.sleep(waitTime);
 
-            if(chunkMap.containsKey(fileID+"_"+chunkNo)){
+            if(chunkMap.containsKey(chunkKey)){
                 //verifying if the replication degree desire by the peer was already reached
-                if(chunkMap.get(fileID+"_"+chunkNo).size() >= Integer.parseInt(replicationDegree)){
+                if(getReplicationDegree(fileID,chunkNo) >= Integer.parseInt(replicationDegree)){
                     return false;
                 }
             }
@@ -216,24 +224,28 @@ public class ChunkManager {
             return false;
 
         ArrayList<Integer> chunkPeers = chunkMap.get(fileID + '_' + chunkNo);
+        String chunkKey = fileID + '_' + chunkNo;
         int sender = Integer.parseInt(senderID);
         if (chunkPeers == null) {
             chunkPeers = new ArrayList<>();
             chunkPeers.add(sender);
-            chunkMap.put(fileID + '_' + chunkNo, chunkPeers);
+            chunkMap.put(chunkKey, chunkPeers);
+            perceivedChunkRepDeg.put(chunkKey,"1");
         } else {
             for (Integer chunkPeer : chunkPeers) {
                 if (chunkPeer == sender)    // peer was already registered
                     return true;
             }
             chunkPeers.add(sender);
+            perceivedChunkRepDeg.replace(chunkKey, Integer.toString(chunkPeers.size()));
+            saveToFile();
         }
         return true;
     }
 
     /**
      *
-     * Called when a peer receives a STORED message from another peer
+     * Called when a peer receives a REMOVED message from another peer
      * It updates the peer's chunkMap to reflect the perceived
      * replication degree of the chunk
      *
@@ -247,13 +259,15 @@ public class ChunkManager {
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
             return false;
 
-
-        ArrayList<Integer> chunkPeers = chunkMap.get(fileID + '_' + chunkNo);
+        String chunkKey = fileID + '_' + chunkNo;
+        ArrayList<Integer> chunkPeers = chunkMap.get(chunkKey);
         if(chunkPeers == null) //file not registered on the server
             return false;
 
         Object sender = Integer.parseInt(senderID);
         chunkPeers.remove(sender);
+        perceivedChunkRepDeg.replace(chunkKey,Integer.toString(chunkPeers.size()));
+        saveToFile();
         return true;
     }
 
@@ -282,7 +296,7 @@ public class ChunkManager {
      */
     public int getReplicationDegree(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
-        return chunkMap.containsKey(key) ? chunkMap.get(key).size() : -1;
+        return chunkMap.get(key) == null ? chunkMap.get(key).size() : -1;
     }
 
     public boolean registerNumChunks(String fileID, int numChunks) {
@@ -320,7 +334,9 @@ public class ChunkManager {
             String chunkName = fileID + '_' + Integer.toString(fileChunk);
 
             chunkMap.remove(chunkName);
+            perceivedChunkRepDeg.remove(chunkName);
             fileReplicationDegrees.remove(fileID);
+            saveToFile();
 
             String chunkPath = chunksPath + '/' + chunkName;
             File chunk = new File(chunkPath);
@@ -419,9 +435,9 @@ public class ChunkManager {
      * verifies if a chunk message was already sent for that specific chunk
      * @param fileID id from the file
      * @param chunkNo number of the chunk
-     * @return true if he can send the message, false otherwise
+     * @return true if the peer can send the message, false otherwise
      */
-    public boolean canISendChunkMessage(String fileID, String chunkNo){
+    public boolean canSendChunkMessage(String fileID, String chunkNo){
 
         if(restoredChunkList.contains(fileID+"_"+chunkNo)){
             restoredChunkList.remove(fileID+"_"+chunkNo);

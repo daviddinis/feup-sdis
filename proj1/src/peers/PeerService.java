@@ -509,7 +509,7 @@ public class PeerService {
             e.printStackTrace();
         }
 
-        if(chunkManager.canISendChunkMessage(fileID,chunkNo)){
+        if(chunkManager.canSendChunkMessage(fileID,chunkNo)){
             dataRestoreChannel.sendMessage(buf);
             printHeader(header, true);
             //TODO random time uniformly distributed
