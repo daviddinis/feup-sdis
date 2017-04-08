@@ -52,6 +52,15 @@ public class ChunkManager {
     private ArrayList<String> restoredChunkList;
 
     /**
+     * Stores the chunks that are marked for deletion
+     * Used in the enhanced version of the File Deletion Subprotocol
+     *
+     * key = <fileID>_<ChunkNo>
+     * value = array with the peer id of the peers that have stored that chunk
+     */
+    private ConcurrentHashMap<String, ArrayList<Integer>> markedForDeletion;
+
+    /**
      * used to write perceived chunk replication degrees to a file
      */
     private Properties chunkRepDegProperties;
@@ -82,6 +91,7 @@ public class ChunkManager {
             perceivedChunkRepDeg = new ConcurrentHashMap<>();
             occupiedSpace = 0;
             restoredChunkList = new ArrayList<>();
+            markedForDeletion = new ConcurrentHashMap<>();
         }
 
         chunkRepDegProperties = new Properties();
@@ -124,6 +134,7 @@ public class ChunkManager {
             oos.writeObject(desiredFileReplicationDegrees);
             oos.writeObject(storedChunks);
             oos.writeObject(restoredChunkList);
+            oos.writeObject(markedForDeletion);
             oos.close();
         } catch (IOException e) {
             System.err.println("Unable to open state file");
@@ -141,6 +152,7 @@ public class ChunkManager {
             desiredFileReplicationDegrees = (ConcurrentHashMap<String,Integer>) ois.readObject();
             storedChunks = (ConcurrentHashMap<String,ArrayList<Integer>>) ois.readObject();
             restoredChunkList = (ArrayList<String>) ois.readObject();
+            markedForDeletion = (ConcurrentHashMap<String,ArrayList<Integer>>) ois.readObject();
             occupiedSpace = getOccupiedSpace();
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Unable to load peer state");
@@ -361,21 +373,100 @@ public class ChunkManager {
     }
 
     /**
+     * Marks the chunks belonging to a file as set for deletion
+     * Used in the enhanced version of the File Deletion Subprotocol
+     * @param fileID ID of the file to be deleted
+     */
+    public void markForDeletion(String fileID){
+
+        for(Map.Entry<String,ArrayList<Integer>> entry : chunkMap.entrySet()){
+            if(entry.getKey().startsWith(fileID)) {
+                markedForDeletion.put(entry.getKey(),chunkMap.get(entry.getKey()));
+                chunkMap.remove(entry.getKey());
+                perceivedChunkRepDeg.remove(entry.getKey());
+            }
+        }
+        saveReplicationDegrees();
+        saveState();
+    }
+
+
+    /**
+     * Called when a peer receives a DELETED message
+     * Updates the markedForDeletion map
+     * @param senderID  ID of the peer who sent the DELETED message
+     * @param fileID    ID of the file who's chunk was deleted
+     * @param chunkNo   Number of the deleted chunk
+     */
+    public void registerDeletion(String senderID, String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        ArrayList<Integer> chunkPeers = markedForDeletion.get(key);
+        if(chunkPeers == null)
+            return;
+
+        Integer sender = Integer.parseInt(senderID);
+
+        if(chunkPeers.contains(sender))
+            chunkPeers.remove(sender);
+
+        if(chunkPeers.isEmpty())
+            markedForDeletion.remove(key);
+
+        saveState();
+    }
+
+    public ArrayList<String> checkDeletion(String senderID){
+        if(markedForDeletion.isEmpty())
+            return null;
+
+        ArrayList<String> toDelete = new ArrayList<>();
+        if(!markedForDeletion.isEmpty()){
+            Integer sender = Integer.parseInt(senderID);
+            for(Map.Entry<String,ArrayList<Integer>> entry : markedForDeletion.entrySet()){
+                ArrayList<Integer> chunkPeers = entry.getValue();
+                if(chunkPeers.contains(sender)){
+                    String fileID = entry.getKey().split("_")[0];
+                    if(!toDelete.contains(fileID))
+                        toDelete.add(fileID);
+                }
+            }
+        }
+
+        return toDelete;
+    }
+
+    public boolean isMarkedForDeletion(String fileID){
+        if(!markedForDeletion.isEmpty()){
+            for(Map.Entry<String,ArrayList<Integer>> entry : markedForDeletion.entrySet()){
+                if(entry.getKey().startsWith(fileID))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Deletes the stored chunks (if any) the peer has
      * belonging to file identified by the parameter file ID
      *
      * @param fileID file ID of the file whose chunks are to be deleted
      */
-    public void deleteFile(String fileID) {
+    public ArrayList<String> deleteFile(String fileID) {
         ArrayList<Integer> fileChunks = storedChunks.get(fileID);
+        ArrayList<String> deletedChunks = null;
         if (fileChunks == null) {  // peer has no chunks belonging to this file
             System.out.format("This peer has no chunks belonging to the file with file ID %s\n", fileID);
         }
 
         else {
+            deletedChunks = new ArrayList<>();
             for (Integer fileChunk : fileChunks) {
-                String chunkName = fileID + '_' + Integer.toString(fileChunk);
+                String chunkNo = Integer.toString(fileChunk);
+                String chunkName = fileID + '_' + chunkNo;
 
+                deletedChunks.add(chunkNo);
+                chunkMap.remove(chunkName);
+                perceivedChunkRepDeg.remove(chunkName);
 
                 String chunkPath = chunksPath + '/' + chunkName;
                 File chunk = new File(chunkPath);
@@ -385,19 +476,14 @@ public class ChunkManager {
             storedChunks.remove(fileID);
         }
 
-        for(Map.Entry<String,ArrayList<Integer>> entry : chunkMap.entrySet()){
-            if(entry.getKey().startsWith(fileID)) {
-                chunkMap.remove(entry.getKey());
-                perceivedChunkRepDeg.remove(entry.getKey());
-            }
-        }
-
         if(desiredFileReplicationDegrees.containsKey(fileID))
             desiredFileReplicationDegrees.remove(fileID);
 
 
         saveReplicationDegrees();
         saveState();
+
+        return deletedChunks;
     }
 
     public byte[] getChunkData(String fileID, String chunkNo) throws IOException {
