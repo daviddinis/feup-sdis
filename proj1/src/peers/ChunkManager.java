@@ -576,6 +576,7 @@ public class ChunkManager {
             }
             deletedChunks.add(smallestChunk.getName());
             smallestChunk.delete();
+	/* TODO UPDATE DATA STRUCTURES TO REFLECT THE STATE OF THE NETWORK */
         }
         return deletedChunks;
     }

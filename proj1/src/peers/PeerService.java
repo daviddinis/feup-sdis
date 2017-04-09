@@ -261,6 +261,7 @@ public class PeerService {
 
         System.out.format("%d chunks were deleted\n", deletedChunks.size());
         for(String deletedChunk : deletedChunks){
+	    System.out.println(deletedChunk);
             String[] deletedChunkInfo = deletedChunk.split("_");
             String fileID = deletedChunkInfo[0];
             String chunkNo = deletedChunkInfo[1];
@@ -323,8 +324,10 @@ public class PeerService {
 
                 /* Check if there is space to store the chunk */
                 byte[] chunk = new byte[input.available()];
-                if(chunkManager.getOccupiedSpace() + chunk.length > availableSpace*1000)
+                if(chunkManager.getOccupiedSpace() + chunk.length > availableSpace*1000){
+		    System.err.format("No space available to store chunks. Space occupied = %d\n", chunkManager.getOccupiedSpace());	
                     break;
+		}
 
                 chunkManager.markForBackup(fileID, chunkNo);
 
