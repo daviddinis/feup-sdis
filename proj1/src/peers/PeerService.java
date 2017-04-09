@@ -20,6 +20,7 @@ public class PeerService {
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
     private static final String CRLF = "\r\n";
+    private static final String MYFILES_FILENAME = "my_files_names";
 
     private final String serverId;
     private final String protocolVersion;
@@ -55,9 +56,9 @@ public class PeerService {
      **/
     private long availableSpace;
 
-    private final ArrayList<String> myFileIDs;
+    private ArrayList<String> myFileIDs;
 
-    private final ArrayList<String> myFileNames;
+    private ArrayList<String> myFileNames;
 
     public PeerService(String serverId, String protocolVersion, String serviceAccessPoint, InetAddress mcAddr, int mcPort, InetAddress mdbAddr, int mdbPort,
                        InetAddress mdrAddr, int mdrPort) throws IOException {
@@ -126,6 +127,8 @@ public class PeerService {
                 e.printStackTrace();
             }
         }
+
+        loadMyFiles();
     }
 
     private void sendGreeting(){
@@ -480,6 +483,7 @@ public class PeerService {
      */
     public void requestFileDeletion(String fileID) {
         myFileNames.remove(myFileIDs.indexOf(fileID));
+        saveMyFiles();
         
         if(myFileIDs.remove(fileID) || chunkManager.isMarkedForDeletion(fileID)){
             chunkManager.markForDeletion(fileID);
@@ -639,8 +643,11 @@ public class PeerService {
     public void registerFile(String fileId, int replicationDegree, int numChunks, String filepath) {
         myFileIDs.add(fileId);
         myFileNames.add(filepath);
+        saveMyFiles();
+
         chunkManager.registerFile(fileId, replicationDegree);
         chunkManager.registerNumChunks(fileId, numChunks);
+
     }
 
     public int getNumChunks(String fileID) {
@@ -717,7 +724,7 @@ public class PeerService {
 
     public String getCurrentState() {
 
-        String currentState = "\t\t============ FILES ============\n";
+        String currentState = "\t\t============ FILES ============\n\n";
 
         for (int i=0;i<myFileIDs.size();i++){
             currentState += "File number " + i + "\n";
@@ -726,14 +733,34 @@ public class PeerService {
             currentState += chunkManager.getFileCurrentState(myFileIDs.get(i));
         }
 
-        currentState += "\n\t\t============ CHUNKS ============\n";
+        currentState += "\n\t\t============ CHUNKS ============\n\n";
         currentState += chunkManager.getChunksState();
 
-        currentState += "\n\t\t============ SIZE ============\n";
-        currentState += "Maximum Amount to store chunks: " + availableSpace + " Kb\n";
-        currentState += "Storage used to backup chunks: " + (chunkManager.getOccupiedSpace()/1000) + " Kb\n";
-        currentState += "Space available: " + ((chunkManager.getOccupiedSpace()/1000) - availableSpace) + " Kb\n";
+        currentState += "\n\t\t============ SIZE ============\n\n";
+        currentState += "\tMaximum Amount to store chunks: " + availableSpace + " Kb\n";
+        currentState += "\tStorage used to backup chunks: " + (chunkManager.getOccupiedSpace()/1000) + " Kb\n";
+        currentState += "\tSpace available: " + (availableSpace - (chunkManager.getOccupiedSpace()/1000)) + " Kb\n";
 
         return currentState;
+    }
+
+    public void saveMyFiles(){
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(serverId + '/' + MYFILES_FILENAME));
+            oos.writeObject(myFileIDs);
+            oos.writeObject(myFileNames);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void loadMyFiles(){
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId + '/' + MYFILES_FILENAME));
+            myFileIDs = (ArrayList<String>) ois.readObject();
+            myFileNames = (ArrayList<String>) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Unable to load peer filenames");
+        }
     }
 }
