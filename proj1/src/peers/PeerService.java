@@ -3,7 +3,6 @@ package peers;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -117,11 +116,13 @@ public class PeerService {
             restoreFileChannel.receiveMessage();
         }
 
-        try {
-            Thread.sleep(500);
-            sendGreeting();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if(protocolVersion.equals("1.3")) {
+            try {
+                Thread.sleep(500);
+                sendGreeting();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -432,6 +433,8 @@ public class PeerService {
                 break;
             }
             case "AHOY": {
+                if(!protocolVersion.equals("1.3"))
+                    break;
                 ArrayList<String> filesToDelete = chunkManager.checkDeletion(senderID);
                 if(filesToDelete == null)
                     break;

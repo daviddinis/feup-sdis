@@ -71,15 +71,6 @@ public class ChunkManager {
 
     public ChunkManager(String serverId, String chunksPath) {
 
-        /*
-        todo: on startup
-        check what chunks are stored -> scan the directory? - can use other properties
-        get the desired file replication degrees -> can use Properties
-        get the chunk map -> Serialize?
-        get the num chunks per file -> can use Properties
-        get the perceived chunk rep deg -> can use Properties
-        USE OBJECT OUTPUT STREAMS
-         */
         this.serverId = serverId;
         this.chunksPath = chunksPath;
 
@@ -125,7 +116,7 @@ public class ChunkManager {
      * Writes the state of the peer to a file
      * @return true if write was successful
      */
-    private boolean saveState(){
+    private synchronized boolean saveState(){
         try {
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(serverId + '/' + STATE_FILENAME));
             oos.writeObject(numChunksFile);
