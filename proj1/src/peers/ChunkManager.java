@@ -263,7 +263,7 @@ public class ChunkManager {
      * @param chunkData data of the chunk
      * @throws IOException
      */
-    private void writeChunkToMemory(String fileID, String chunkNo, byte[] chunkData) throws IOException {
+    public void writeChunkToMemory(String fileID, String chunkNo, byte[] chunkData) throws IOException {
         String filename = fileID + "_" + chunkNo;
         FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
         chunkFile.write(chunkData);
