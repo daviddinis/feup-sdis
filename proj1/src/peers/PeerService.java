@@ -20,8 +20,6 @@ public class PeerService {
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
     private static final String CRLF = "\r\n";
-    private static final int FIRST_DEFAULT_PORT = 1024;
-    private static final int LAST_AVAILABLE_PORT = 65535;
 
     private final String serverId;
     private final String protocolVersion;
@@ -702,7 +700,7 @@ public class PeerService {
 
     public String getCurrentState() {
 
-        String currentState = "";
+        String currentState = "\t\t============ FILES ============\n";
 
         for (int i=0;i<myFileIDs.size();i++){
             currentState += "File number " + i + "\n";
@@ -710,6 +708,14 @@ public class PeerService {
             currentState += "\tFile backup service id: " + myFileIDs.get(i) + ";\n";
             currentState += chunkManager.getFileCurrentState(myFileIDs.get(i));
         }
+
+        currentState += "\n\t\t============ CHUNKS ============\n";
+        currentState += chunkManager.getChunksState();
+
+        currentState += "\n\t\t============ SIZE ============\n";
+        currentState += "Maximum Amount to store chunks: " + availableSpace + " Kb\n";
+        currentState += "Storage used to backup chunks: " + (chunkManager.getOccupiedSpace()/1000) + " Kb\n";
+        currentState += "Space available: " + ((chunkManager.getOccupiedSpace()/1000) - availableSpace) + " Kb\n";
 
         return currentState;
     }
