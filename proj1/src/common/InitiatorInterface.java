@@ -45,5 +45,5 @@ public interface InitiatorInterface extends Remote {
      *
      * @throws RemoteException
      */
-    void state() throws RemoteException;
+    String state() throws RemoteException;
 }

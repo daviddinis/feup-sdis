@@ -121,8 +121,12 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
     }
 
     @Override
-    public void state() throws RemoteException {
-        System.out.println(peer.getCurrentState());
+    public String state() throws RemoteException {
+        String state = peer.getCurrentState();
+
+        System.out.println(state);
+
+        return state;
     }
 
     private String getFileHash(String filepath) throws IOException {

@@ -57,7 +57,7 @@ public class ClientInterface {
                     initiatorPeer.reclaim(maxDiskSpace);
                     break;
                 case "STATE":
-                    initiatorPeer.state();
+                    System.out.println(initiatorPeer.state());
                     break;
                 default:
                     break;
