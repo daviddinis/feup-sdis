@@ -9,8 +9,6 @@ import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class PeerService {
 
@@ -19,12 +17,21 @@ public class PeerService {
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
     private static final String CRLF = "\r\n";
+    private static final String RESTORE_FILE_CHANNEL_ADR = "224.0.0.5";
+    private static final int FIRST_DEFAULT_PORT = 1024;
+    private static final int LAST_AVAILABLE_PORT = 65535;
+
     private final String serverId;
     private final String protocolVersion;
 
     private PeerChannel controlChannel;
     private PeerChannel dataBackupChannel;
     private PeerChannel dataRestoreChannel;
+
+    /**
+     * Channel used on the restore protocol enhancement
+     */
+    private PeerChannel restoreFileChannel;
 
     private String restoredFilesPath;
 
@@ -44,7 +51,6 @@ public class PeerService {
     private long availableSpace;
 
     private final ArrayList<String> myFileIDs;
-
 
     public PeerService(String serverId, String protocolVersion, String serviceAccessPoint, InetAddress mcAddr, int mcPort, InetAddress mdbAddr, int mdbPort,
                        InetAddress mdrAddr, int mdrPort) throws IOException {
@@ -100,6 +106,30 @@ public class PeerService {
 
         //6 400 000 bytes (100 full chunks, ~6MB)
         availableSpace = 6400;
+
+        // for restore enhancement
+        if(protocolVersion.equals("1.2")){
+            InetAddress adr = null;
+            adr = InetAddress.getByName(RESTORE_FILE_CHANNEL_ADR);
+            int port = computePortWithServerID(serverId);
+            restoreFileChannel = new PeerChannel(adr,port,this);
+            restoreFileChannel.receiveMessage();
+        }
+
+        if(protocolVersion.equals("1.3")) {
+            try {
+                Thread.sleep(500);
+                sendGreeting();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void sendGreeting(){
+        String header = makeHeader("AHOY",protocolVersion,serverId);
+        controlChannel.sendMessage(header.getBytes());
+        printHeader(header,true);
     }
 
     /**
@@ -177,6 +207,7 @@ public class PeerService {
             System.arraycopy(chunk, 0, buf, headerBytes.length, chunk.length);
 
             do {
+                    System.out.println(counter);
                 if (dataBackupChannel.sendMessage(buf))
                     printHeader(header, true);
 
@@ -227,7 +258,7 @@ public class PeerService {
             return;
         }
 
-        System.out.format("%d chunks were deleted", deletedChunks.size());
+        System.out.format("%d chunks were deleted\n", deletedChunks.size());
         for(String deletedChunk : deletedChunks){
             String[] deletedChunkInfo = deletedChunk.split("_");
             String fileID = deletedChunkInfo[0];
@@ -290,10 +321,13 @@ public class PeerService {
 
                 byte[] chunk = new byte[input.available()];
                 input.read(chunk, 0, input.available());
-                chunkManager.storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk);
-                String response = makeHeader("STORED", protocolVersion, serverId, fileID, chunkNo);
-                controlChannel.sendMessage(response.getBytes());
-                printHeader(response, true);
+                if(chunkManager.storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk)) {
+                    String response = makeHeader("STORED", protocolVersion, serverId, fileID, chunkNo);
+                    chunkManager.registerChunk(fileID,chunkNo,replicationDegree);
+                    controlChannel.sendMessage(response.getBytes());
+                    chunkManager.registerStorage(protocolVersion, this.serverId, fileID, chunkNo);
+                    printHeader(response, true);
+                }
                 break;
             }
             case "STORED": {
@@ -332,16 +366,19 @@ public class PeerService {
                 printHeader(header, false);
 
                 String fileID = messageHeader[3];
-
-                if (!requestedRestore(fileID))
-                    break;
-
                 String chunkNo = messageHeader[4];
-                byte[] chunk = new byte[input.available()];
-                input.read(chunk, 0, input.available());
 
-                FileRestorer fileRestorer = restoredChunksObjects.get(fileID);
-                fileRestorer.processRestoredChunks(chunkNo, chunk);
+                if (requestedRestore(fileID)){
+                    byte[] chunk = new byte[input.available()];
+                    input.read(chunk, 0, input.available());
+
+                    FileRestorer fileRestorer = restoredChunksObjects.get(fileID);
+                    fileRestorer.processRestoredChunks(chunkNo, chunk);
+                }
+                else {
+                    chunkManager.registerChunkMessage(fileID,chunkNo);
+                }
+
                 break;
             }
             case "DELETE": {
@@ -351,7 +388,16 @@ public class PeerService {
                 }
                 printHeader(header, false);
                 String fileID = messageHeader[3];
-                chunkManager.deleteFile(fileID);
+                ArrayList<String> deletedChunks = chunkManager.deleteFile(fileID);
+
+                if(protocolVersion.equals("1.3") && deletedChunks != null){
+                    for(String chunkNo : deletedChunks){
+                        String response = makeHeader("DELETED",protocolVersion,serverId,fileID,chunkNo);
+                        printHeader(response, true);
+                        controlChannel.sendMessage(response.getBytes());
+                    }
+                }
+
                 break;
             }
             case "REMOVED":{
@@ -379,12 +425,31 @@ public class PeerService {
                 }
                 break;
             }
+            case "DELETED": {
+                String fileID = messageHeader[3];
+                String chunkNo = messageHeader[4];
+                printHeader(header,false);
+                chunkManager.registerDeletion(senderID,fileID,chunkNo);
+                break;
+            }
+            case "AHOY": {
+                if(!protocolVersion.equals("1.3"))
+                    break;
+                ArrayList<String> filesToDelete = chunkManager.checkDeletion(senderID);
+                if(filesToDelete == null)
+                    break;
+
+                for(String file : filesToDelete)
+                    requestFileDeletion(file);
+                break;
+            }
             default: {
-                System.out.format("Unrecognized operation: %s", messageType);
+                System.out.format("Unrecognized operation: %s\n", messageType);
                 break;
             }
         }
     }
+
 
 
     /**
@@ -394,10 +459,23 @@ public class PeerService {
      * @param fileID file ID of the file to be deleted
      */
     public void requestFileDeletion(String fileID) {
-        myFileIDs.remove(fileID);
-        String message = makeHeader("DELETE", protocolVersion, serverId, fileID);
-        controlChannel.sendMessage(message.getBytes());
-        printHeader(message, true);
+        if(myFileIDs.remove(fileID) || chunkManager.isMarkedForDeletion(fileID)){
+            chunkManager.markForDeletion(fileID);
+            chunkManager.deleteFile(fileID);
+            for(int i = 0; i < 5; i++){
+                String message = makeHeader("DELETE", protocolVersion, serverId, fileID);
+                controlChannel.sendMessage(message.getBytes());
+                printHeader(message, true);
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }
+        else{
+            System.out.format("File %s does not belong to this peer\n", fileID);
+        }
     }
 
 
@@ -417,7 +495,7 @@ public class PeerService {
      * @param fileId  id of the file to be restored
      * @param chunkNo Chunk number
      */
-    public void requestChunkRestore(String fileId, int chunkNo) {
+    public void requestChunkRestore(String fileId, int chunkNo) throws IOException {
 
         Runnable task = () -> {
             int counter = 1, multiplier = 1;
@@ -503,9 +581,26 @@ public class PeerService {
             e.printStackTrace();
         }
 
-        dataRestoreChannel.sendMessage(buf);
-        printHeader(header, true);
-        //TODO random time uniformly distributed
+        if(chunkManager.canSendChunkMessage(fileID,chunkNo)){
+
+            if(protocolVersion.equals("1.2")){
+                InetAddress adr = null;
+                try {
+                    adr = InetAddress.getByName(RESTORE_FILE_CHANNEL_ADR);
+                    int port = computePortWithServerID(senderID);
+                    restoreFileChannel = new PeerChannel(adr,port,this);
+                    restoreFileChannel.sendMessage(buf);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            else {
+                dataRestoreChannel.sendMessage(buf);
+            }
+            printHeader(header, true);
+            //TODO random time uniformly distributed
+        }
+
         return true;
     }
 
@@ -530,5 +625,23 @@ public class PeerService {
 
     public void markRestored(String fileID) {
         restoredChunksObjects.remove(fileID);
+    }
+
+    public int computePortWithServerID(String id){
+
+        int idInteger;
+
+        try{
+            idInteger = Integer.parseInt(id);
+            idInteger += FIRST_DEFAULT_PORT;
+        } catch (NumberFormatException e){
+            idInteger = FIRST_DEFAULT_PORT;
+        }
+
+        if(idInteger > LAST_AVAILABLE_PORT){
+            idInteger = LAST_AVAILABLE_PORT;
+        }
+
+        return idInteger;
     }
 }
