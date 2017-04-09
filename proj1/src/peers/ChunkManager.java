@@ -602,4 +602,31 @@ public class ChunkManager {
 
         return true;
     }
+
+    /**
+     * Given a file id it returns the file state, replication degree, chunks,...
+     * @param fileID id of the file
+     * @return A string with all of the information
+     */
+    public String getFileCurrentState(String fileID){
+        final String[] currentState = {""};
+
+        currentState[0] += "\tDesired replication degree: " + desiredFileReplicationDegrees.get(fileID)+"\n";
+
+        perceivedChunkRepDeg.forEach((key,value)->{
+            String[] keyParts = key.split("_");
+            if(keyParts[0].equals(fileID)){
+                currentState[0] += "\tChunk ID: " + keyParts[1] + "\n";
+                currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(key) +"\n";
+            }
+        });
+
+        return currentState[0];
+    }
+
+    public String getChunksState(){
+        final String[] currentState = {""};
+
+        return currentState[0];
+    }
 }
