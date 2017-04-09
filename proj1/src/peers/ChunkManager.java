@@ -239,19 +239,22 @@ public class ChunkManager {
         String chunkKey = fileID+"_"+chunkNo;
 
         try {
-            Random random = new Random();
-            long waitTime = random.nextInt(MAX_SLEEP_TIME);
-            Thread.sleep(waitTime);
 
-            if(chunkMap.containsKey(chunkKey)){
-                //verifying if the replication degree desire by the peer was already reached
-                if(getReplicationDegree(fileID,chunkNo) >= Integer.parseInt(replicationDegree)){
-                    return false;
+            if(protocolVersion.equals("1.1")){ 
+                sleep();
+                if(chunkMap.containsKey(chunkKey)){
+                    //verifying if the replication degree desire by the peer was already reached
+                    if(getReplicationDegree(fileID,chunkNo) >= Integer.parseInt(replicationDegree)){
+                        return false;
+                    }
                 }
+                writeChunkToMemory(fileID,chunkNo,chunkData);
             }
-            String filename = fileID + "_" + chunkNo;
-            FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
-            chunkFile.write(chunkData);
+            else {
+                writeChunkToMemory(fileID,chunkNo,chunkData);
+                sleep();
+            }
+
 
         } catch (IOException e) {
             System.err.println("IOException :: PeerService :: Unable to backup chunk.");
@@ -260,6 +263,29 @@ public class ChunkManager {
             e.printStackTrace();
         }
         return true;
+    }
+
+    /**
+     * Writes a chunk of a given file to memory
+     * @param fileID id of the file
+     * @param chunkNo number of the chunk
+     * @param chunkData data of the chunk
+     * @throws IOException
+     */
+    private void writeChunkToMemory(String fileID, String chunkNo, byte[] chunkData) throws IOException {
+        String filename = fileID + "_" + chunkNo;
+        FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
+        chunkFile.write(chunkData);
+    }
+
+    /**
+     * Sleeps inside of a range from 0 to 400 ms
+     * @throws InterruptedException
+     */
+    public void sleep() throws InterruptedException {
+        Random random = new Random();
+        long waitTime = random.nextInt(MAX_SLEEP_TIME);
+        Thread.sleep(waitTime);
     }
 
     /**
@@ -519,22 +545,22 @@ public class ChunkManager {
         ArrayList<String> deletedChunks = new ArrayList<>();
 
         System.out.println(getOccupiedSpace());
-       while(getOccupiedSpace() > availableSpace) {
-           System.out.println(getOccupiedSpace());
+        while(getOccupiedSpace() > availableSpace) {
+            System.out.println(getOccupiedSpace());
 
-           File[] chunks = chunkDir.listFiles();
-           if (chunks == null)
-               break;
+            File[] chunks = chunkDir.listFiles();
+            if (chunks == null)
+                break;
 
-           File smallestChunk = chunks[0];
-           for (File chunk : chunks) {
-               if (chunk.length() < smallestChunk.length())
-                   smallestChunk = chunk;
-           }
-           deletedChunks.add(smallestChunk.getName());
-           smallestChunk.delete();
-       }
-       return deletedChunks;
+            File smallestChunk = chunks[0];
+            for (File chunk : chunks) {
+                if (chunk.length() < smallestChunk.length())
+                    smallestChunk = chunk;
+            }
+            deletedChunks.add(smallestChunk.getName());
+            smallestChunk.delete();
+        }
+        return deletedChunks;
     }
 
     /**
