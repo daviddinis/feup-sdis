@@ -61,6 +61,13 @@ public class ChunkManager {
     private ConcurrentHashMap<String, ArrayList<Integer>> markedForDeletion;
 
     /**
+     * Stores chunk identfiers i.e, <FileID>_<chunkNo>
+     * of chunks that are in the process of being backed up
+     * by other peers
+     */
+    private ArrayList<String> markedForBackup;
+
+    /**
      * used to write perceived chunk replication degrees to a file
      */
     private Properties chunkRepDegProperties;
@@ -85,6 +92,7 @@ public class ChunkManager {
             markedForDeletion = new ConcurrentHashMap<>();
         }
 
+        markedForBackup = new ArrayList<>();
         chunkRepDegProperties = new Properties();
 
         /* Create chunk replication degree file */
@@ -229,6 +237,7 @@ public class ChunkManager {
 
         String chunkKey = fileID+"_"+chunkNo;
 
+
         try {
 
             if(protocolVersion.equals("1.1")){ 
@@ -341,6 +350,23 @@ public class ChunkManager {
         saveReplicationDegrees();
         saveState();
         return true;
+    }
+
+    public void markForBackup(String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        if(!markedForBackup.contains(key))
+            markedForBackup.add(key);
+    }
+
+    public boolean isMarkedForBackup(String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        return markedForBackup.contains(key);
+    }
+
+    public void unmarkForBackup(String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        if(markedForBackup.contains(key))
+            markedForBackup.remove(key);
     }
 
     /**
