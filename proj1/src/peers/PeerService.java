@@ -319,7 +319,13 @@ public class PeerService {
                 String chunkNo = messageHeader[4];
                 String replicationDegree = messageHeader[5];
 
+                /* Check if there is space to store the chunk */
                 byte[] chunk = new byte[input.available()];
+                if(chunkManager.getOccupiedSpace() + chunk.length > availableSpace*1000)
+                    break;
+
+                chunkManager.markForBackup(fileID, chunkNo);
+
                 input.read(chunk, 0, input.available());
                 if(chunkManager.storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk)) {
                     String response = makeHeader("STORED", protocolVersion, serverId, fileID, chunkNo);
@@ -339,6 +345,8 @@ public class PeerService {
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
                 chunkManager.registerStorage(protocolVersion, senderID, fileID, chunkNo);
+                if(chunkManager.getReplicationDegree(fileID, chunkNo) >= chunkManager.getDesiredReplicationDegree(fileID))
+                    chunkManager.unmarkForBackup(fileID, chunkNo);
                 break;
             }
             case "GETCHUNK": {
@@ -408,18 +416,24 @@ public class PeerService {
                 String fileID = messageHeader[3];
                 String chunkNo = messageHeader[4];
                 printHeader(header, false);
-                if(!chunkManager.registerRemoval(protocolVersion,senderID,fileID, chunkNo))
+
+                if(!chunkManager.registerRemoval(protocolVersion,senderID,fileID, chunkNo)) //file not registered on the peer
                     break;
+
                 int desiredReplicationDegree = chunkManager.getDesiredReplicationDegree(fileID);
                 int perceivedReplicationDegree = chunkManager.getReplicationDegree(fileID,chunkNo);
+
                 if(perceivedReplicationDegree < desiredReplicationDegree && chunkManager.hasChunk(fileID,Integer.parseInt(chunkNo))) {
                     System.out.format("Replication degree for chunk %s of file %s is under the desired level.\n" +
                             "Desired = %d; Perceived = %d\n", chunkNo, fileID, desiredReplicationDegree, perceivedReplicationDegree
                     );
                     try {
                         byte[] chunk = chunkManager.getChunkData(fileID, chunkNo);
-                        requestChunkBackup(fileID, Integer.parseInt(chunkNo), desiredReplicationDegree, chunk);
-                    } catch (IOException e) {
+                        Random random = new Random();
+                        Thread.sleep((long) random.nextInt(400));
+                        if(!chunkManager.isMarkedForBackup(fileID, chunkNo))
+                            requestChunkBackup(fileID, Integer.parseInt(chunkNo), desiredReplicationDegree, chunk);
+                    } catch (IOException | InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
