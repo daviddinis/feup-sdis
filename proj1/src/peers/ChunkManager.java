@@ -569,14 +569,45 @@ public class ChunkManager {
             if (chunks == null)
                 break;
 
-            File smallestChunk = chunks[0];
+            File toDelete = chunks[0];
+
+            String[] toDeleteInfo = toDelete.getName().split("_");
+
+            String toDeleteFileID = toDeleteInfo[0];
+            String toDeleteChunkNo = toDeleteInfo[1];
+
+            String fileID;
+            String chunkNo;
+
             for (File chunk : chunks) {
-                if (chunk.length() < smallestChunk.length())
-                    smallestChunk = chunk;
+
+                String[] chunkInfo = chunk.getName().split("_");
+                if(chunkInfo.length < 2)
+                    chunk.delete();
+
+                fileID = chunkInfo[0];
+                chunkNo = chunkInfo[1];
+
+                if(getReplicationDegree(fileID,chunkNo) > getReplicationDegree(toDeleteFileID,toDeleteChunkNo)){
+                    toDelete = chunk;
+                    toDeleteFileID = fileID;
+                    toDeleteChunkNo = chunkNo;
+                }
             }
-            deletedChunks.add(smallestChunk.getName());
-            smallestChunk.delete();
-	/* TODO UPDATE DATA STRUCTURES TO REFLECT THE STATE OF THE NETWORK */
+            deletedChunks.add(toDelete.getName());
+            toDelete.delete();
+
+            String key = toDeleteFileID + '_' + toDeleteChunkNo;
+
+            ArrayList<Integer> chunkPeers = chunkMap.get(key);
+            chunkPeers.remove(this.serverId);
+            perceivedChunkRepDeg.replace(key, Integer.toString(Integer.parseInt(perceivedChunkRepDeg.get(key)) + 1));
+            ArrayList<Integer> fileChunks = storedChunks.get(toDeleteFileID);
+            fileChunks.remove(Integer.parseInt(toDeleteChunkNo));
+
+            saveReplicationDegrees();
+            saveState();
+
         }
         return deletedChunks;
     }
