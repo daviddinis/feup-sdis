@@ -67,7 +67,7 @@ public class PeerChannel {
         byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
         Runnable task = () -> {
-        peer.messageHandler(buffer, packet.getLength());
+        peer.messageHandler(buffer, packet.getLength(),packet.getAddress());
         };
 
         ExecutorService service = Executors.newFixedThreadPool(10);

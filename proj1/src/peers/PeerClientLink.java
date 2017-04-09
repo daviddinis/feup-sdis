@@ -90,6 +90,10 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             return;
         }
 
+        if(peer.getProtocolVersion().equals("1.2")){
+            peer.tcpServer();
+        }
+
         FileRestorer fileRestorer = new FileRestorer(peer, filepath, peer.getRestoredFilesPath(), fileID);
         peer.addToRestoredHashMap(fileID, fileRestorer);
 

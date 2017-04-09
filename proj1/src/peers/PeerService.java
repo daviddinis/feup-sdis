@@ -1,14 +1,17 @@
 package peers;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
+
+import java.io.*;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class PeerService {
 
@@ -17,7 +20,6 @@ public class PeerService {
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
     private static final String CRLF = "\r\n";
-    private static final String RESTORE_FILE_CHANNEL_ADR = "224.0.0.5";
     private static final int FIRST_DEFAULT_PORT = 1024;
     private static final int LAST_AVAILABLE_PORT = 65535;
 
@@ -29,9 +31,14 @@ public class PeerService {
     private PeerChannel dataRestoreChannel;
 
     /**
-     * Channel used on the restore protocol enhancement
+     * Socket used on restore enhancement
      */
-    private PeerChannel restoreFileChannel;
+    private ServerSocket restoreTCPSocket;
+
+    /**
+     * Port used on restore enhancement
+     */
+    private final int dataRestorePort;
 
     private String restoredFilesPath;
 
@@ -108,13 +115,7 @@ public class PeerService {
         availableSpace = 6400;
 
         // for restore enhancement
-        if(protocolVersion.equals("1.2")){
-            InetAddress adr = null;
-            adr = InetAddress.getByName(RESTORE_FILE_CHANNEL_ADR);
-            int port = computePortWithServerID(serverId);
-            restoreFileChannel = new PeerChannel(adr,port,this);
-            restoreFileChannel.receiveMessage();
-        }
+        dataRestorePort = mdrPort;
 
         if(protocolVersion.equals("1.3")) {
             try {
@@ -126,7 +127,7 @@ public class PeerService {
         }
     }
 
-    private void sendGreeting(){
+    private void sendGreeting(){  
         String header = makeHeader("AHOY",protocolVersion,serverId);
         controlChannel.sendMessage(header.getBytes());
         printHeader(header,true);
@@ -207,7 +208,7 @@ public class PeerService {
             System.arraycopy(chunk, 0, buf, headerBytes.length, chunk.length);
 
             do {
-                    System.out.println(counter);
+                System.out.println(counter);
                 if (dataBackupChannel.sendMessage(buf))
                     printHeader(header, true);
 
@@ -274,8 +275,9 @@ public class PeerService {
      * checks the instruction and calls the appropriate protocol
      *
      * @param message received message
+     * @param address
      */
-    public void messageHandler(byte[] message, int messageLength) {
+    public void messageHandler(byte[] message, int messageLength, InetAddress address) {
 
         ByteArrayInputStream input = new ByteArrayInputStream(message);
 
@@ -363,7 +365,7 @@ public class PeerService {
                 if (!chunkManager.hasChunk(fileID, Integer.parseInt(chunkNo))) {
                     break;
                 }
-                sendChunk(protocolVersion, senderID, fileID, chunkNo);
+                sendChunk(protocolVersion, senderID, fileID, chunkNo,address);
                 break;
             }
             case "CHUNK": {
@@ -566,7 +568,7 @@ public class PeerService {
     }
 
 
-    private boolean sendChunk(String protocolVersion, String senderID, String fileID, String chunkNo) {
+    private boolean sendChunk(String protocolVersion, String senderID, String fileID, String chunkNo, InetAddress address) {
 
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
             return false;
@@ -598,12 +600,13 @@ public class PeerService {
         if(chunkManager.canSendChunkMessage(fileID,chunkNo)){
 
             if(protocolVersion.equals("1.2")){
-                InetAddress adr = null;
                 try {
-                    adr = InetAddress.getByName(RESTORE_FILE_CHANNEL_ADR);
-                    int port = computePortWithServerID(senderID);
-                    restoreFileChannel = new PeerChannel(adr,port,this);
-                    restoreFileChannel.sendMessage(buf);
+                    Socket restoreSocket = new Socket(address,dataRestorePort);
+
+                    DataOutputStream output = new DataOutputStream(restoreSocket.getOutputStream());
+
+                    output.write(buf,0,buf.length);
+                    output.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -641,21 +644,67 @@ public class PeerService {
         restoredChunksObjects.remove(fileID);
     }
 
-    public int computePortWithServerID(String id){
+    /**
+     * Returns the protocol version
+     * @return protocol version
+     */
+    public String getProtocolVersion() {
+        return protocolVersion;
+    }
 
-        int idInteger;
-
-        try{
-            idInteger = Integer.parseInt(id);
-            idInteger += FIRST_DEFAULT_PORT;
-        } catch (NumberFormatException e){
-            idInteger = FIRST_DEFAULT_PORT;
+    /**
+     * Function used to create the tcp socket and to listen for messages
+     * @throws IOException
+     */
+    public void tcpServer() throws IOException {
+        if(restoreTCPSocket != null){
+            restoreTCPSocket.close();
         }
 
-        if(idInteger > LAST_AVAILABLE_PORT){
-            idInteger = LAST_AVAILABLE_PORT;
-        }
+        restoreTCPSocket = new ServerSocket(dataRestorePort);
 
-        return idInteger;
+        Runnable task = () -> {
+            Socket dataSocket = null;
+
+            while (true){
+
+                try {
+                    dataSocket=restoreTCPSocket.accept();
+                    processRestoreMessage(dataSocket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
+        new Thread(task).start();
+    }
+
+    /**
+     * Process a message from the restore socket
+     * @param dataSocket socket from where the message is read
+     * @throws IOException
+     */
+    public void processRestoreMessage(Socket dataSocket) throws IOException {
+
+        Runnable task = () -> {
+            DataInputStream input = null;
+            try {
+                input = new DataInputStream(dataSocket.getInputStream());
+                byte[] chunkData = new byte[input.available()];
+
+                input.readFully(chunkData);
+
+                messageHandler(chunkData,chunkData.length, dataSocket.getInetAddress());
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        };
+
+        ExecutorService service = Executors.newFixedThreadPool(10);
+
+        service.execute(task);
     }
 }
