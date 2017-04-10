@@ -94,7 +94,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             return;
         }
 
-        if (peer.getProtocolVersion().equals("1.2")) {
+        if (peer.getProtocolVersion().equals("2.0")) {
             peer.tcpServer();
         }
 
