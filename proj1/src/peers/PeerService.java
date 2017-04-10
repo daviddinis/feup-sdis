@@ -663,6 +663,15 @@ class PeerService {
     }
 
 
+    /**
+     * Send a chunk to a peer who requested it
+     *
+     * @param protocolVersion peer version
+     * @param senderID        id of the peer to send the chunk to
+     * @param fileID          file id of the chunk to be sent
+     * @param chunkNo         number of the chunk to be sent
+     * @param address         address of the peer that will receive the chunk (used in the enhanced version)
+     */
     private void sendChunk(String protocolVersion, String senderID, String fileID, String chunkNo, InetAddress address) {
 
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
@@ -724,7 +733,7 @@ class PeerService {
      * @param numChunks         number of chunks in the file to backup
      * @param filepath          file to register
      */
-    public void registerFile(String fileId, int replicationDegree, int numChunks, String filepath) {
+    void registerFile(String fileId, int replicationDegree, int numChunks, String filepath) {
         myFileIDs.add(fileId);
         myFileNames.add(filepath);
         saveMyFiles();
@@ -734,11 +743,22 @@ class PeerService {
 
     }
 
-    public int getNumChunks(String fileID) {
+    /**
+     * Get the number of chunks a file has
+     *
+     * @param fileID file ID
+     * @return number of chunks the file has
+     */
+    int getNumChunks(String fileID) {
         return chunkManager.getNumChunks(fileID);
     }
 
-    public void markRestored(String fileID) {
+    /**
+     * Remove a file from the restoredChunksObjects hashmap
+     *
+     * @param fileID file ID
+     */
+    void markRestored(String fileID) {
         restoredChunksObjects.remove(fileID);
     }
 
@@ -747,7 +767,7 @@ class PeerService {
      *
      * @return protocol version
      */
-    public String getProtocolVersion() {
+    String getProtocolVersion() {
         return protocolVersion;
     }
 
@@ -756,7 +776,7 @@ class PeerService {
      *
      * @throws IOException
      */
-    public void tcpServer() throws IOException {
+    void tcpServer() throws IOException {
         if (restoreTCPSocket != null) {
             restoreTCPSocket.close();
         }
@@ -810,34 +830,71 @@ class PeerService {
         service.execute(task);
     }
 
+    /**
+     * Mark a chunk as being backed up by another peer
+     *
+     * @param fileID  file ID of the file the chunk belongs to
+     * @param chunkNo chunk number
+     */
     private void markForBackup(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         if (!markedForBackup.containsKey(key))
             markedForBackup.put(key, 1);
     }
 
+    /**
+     * Check if a chunk is being backed up by another file
+     *
+     * @param fileID  file ID of the file the chunk belongs to
+     * @param chunkNo chunk number
+     * @return true if the chunk is being backed up by another peer
+     */
     private boolean isMarkedForBackup(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         return markedForBackup.containsKey(key);
     }
 
+    /**
+     * Remove the chunk from the hashmap that indicates the chunks that are being backed up
+     *
+     * @param fileID  file ID of the file the chunk belongs to
+     * @param chunkNo chunk number
+     */
     private void unmarkForBackup(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         if (markedForBackup.containsKey(key))
             markedForBackup.remove(key);
     }
 
+    /**
+     * Get the number of times the backup of the chunk has been requested
+     *
+     * @param fileID  file ID of the file the chunk belongs to
+     * @param chunkNo chunk number
+     * @return number of times the backup has been requested (by another peer)
+     */
     private int getNumBackupRequests(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         return markedForBackup.getOrDefault(key, -1);
     }
 
+    /**
+     * Called when a backup request is received
+     *
+     * @param fileID  file ID of the file the chunk belongs to
+     * @param chunkNo chunk number
+     */
     private void incrementBackupRequests(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         markedForBackup.replace(key, markedForBackup.get(key) + 1);
     }
 
-    public String getCurrentState() {
+    /**
+     * Get the state of the peer
+     *
+     * @return
+     */
+    String getCurrentState() {
 
         String currentState = "\t\t============ FILES ============\n\n";
 
@@ -859,6 +916,9 @@ class PeerService {
         return currentState;
     }
 
+    /**
+     * Save the state of the peer files
+     */
     private void saveMyFiles() {
         try {
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(PEER_DIRECTORY + serverId + '/' + MYFILES_FILENAME));
@@ -869,6 +929,9 @@ class PeerService {
         }
     }
 
+    /**
+     * Load the state of the peer files
+     */
     private void loadMyFiles() {
         try {
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream(PEER_DIRECTORY + serverId + '/' + MYFILES_FILENAME));

@@ -15,6 +15,14 @@ class PeerChannel {
     private final PeerService peer;
     private MulticastSocket socket;
 
+    /**
+     * Peer Channel, responsible for the communication between peers
+     *
+     * @param addr address
+     * @param port port
+     * @param peer peer this channel belongs to
+     * @throws IOException
+     */
     PeerChannel(InetAddress addr, int port, PeerService peer) throws IOException {
         this.addr = addr;
         this.port = port;
@@ -25,6 +33,10 @@ class PeerChannel {
         socket.joinGroup(this.addr);
     }
 
+    /**
+     * Listens to the channel and waits for a packet
+     * Launches a thread to treat it
+     */
     void receiveMessage() {
 
         Runnable task = () -> {
@@ -48,6 +60,12 @@ class PeerChannel {
         new Thread(task).start();
     }
 
+    /**
+     * Sends a message given by the peer
+     *
+     * @param message message to send
+     * @return
+     */
     boolean sendMessage(byte[] message) {
 
         DatagramPacket packet = new DatagramPacket(message, message.length, addr, port);
@@ -60,6 +78,11 @@ class PeerChannel {
         return true;
     }
 
+    /**
+     * Calls the peer's message handler to treat a message
+     *
+     * @param packet received packet
+     */
     private void channelMessageHandler(DatagramPacket packet) {
         byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
