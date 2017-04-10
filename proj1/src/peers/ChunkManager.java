@@ -279,6 +279,7 @@ class ChunkManager {
         String filename = fileID + "_" + chunkNo;
         FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
         chunkFile.write(chunkData);
+        chunkFile.close();
     }
 
     /**
