@@ -34,7 +34,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         FileInputStream file = null;
         String path;
-        if(filepath.startsWith(peer.getMyFilesPath()))
+        if (filepath.startsWith(peer.getMyFilesPath()))
             path = filepath;
         else path = peer.getMyFilesPath() + '/' + filepath;
         try {
@@ -74,7 +74,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             chunkNo++;
         }
 
-        peer.registerFile(fileId, replicationDegree, chunkNo,filepath);
+        peer.registerFile(fileId, replicationDegree, chunkNo, filepath);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             return;
         }
 
-        if(peer.getProtocolVersion().equals("1.2")){
+        if (peer.getProtocolVersion().equals("1.2")) {
             peer.tcpServer();
         }
 
@@ -121,7 +121,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
     @Override
     public void reclaim(int maxAvailableBytes) throws RemoteException {
-        if(maxAvailableBytes < 0)
+        if (maxAvailableBytes < 0)
             throw new IllegalArgumentException("Invalid arguments for reclaim");
         peer.updateAvailableSpace(maxAvailableBytes);
     }

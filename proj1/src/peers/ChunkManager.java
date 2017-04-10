@@ -2,7 +2,10 @@ package peers;
 
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChunkManager {
@@ -10,65 +13,56 @@ public class ChunkManager {
     private static final String CHUNK_MAP_FILENAME = "chunk_info";
     private static final String STATE_FILENAME = ".peer_data";
     private static final int MAX_SLEEP_TIME = 400;
+    private final String chunksPath;
+    private final String serverId;
     /**
      * stores the number of chunks every file has
      * key = <fileID>_<ChunkNo>
      */
     private ConcurrentHashMap<String, Integer> numChunksFile;
-
     /**
      * registers the peers that have stored chunks
      * key = <fileID>_<ChunkNo>
      * value = array with the peer id of the peers that have stored that chunk
      */
     private ConcurrentHashMap<String, ArrayList<Integer>> chunkMap;
-
     /**
      * registers the perceived replication degree of the chunks,
      * used by Properties to write information to a file
-     *
+     * <p>
      * key = <fileID>_<ChunkNo>
      * value = Perceived replication degree for the chunk
      */
     private ConcurrentHashMap<String, String> perceivedChunkRepDeg;
-
     /**
      * stores the desired replication degree for every file the
      * peer has stored or has chunks of
      */
     private ConcurrentHashMap<String, Integer> desiredFileReplicationDegrees;
-
     /**
      * registers the chunk number of the stored chunks
      * key = <fileID>
      * value = array with the chunk numbers of the stored chunks
      */
     private ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
-
     /**
      * when the peer receives a CHUNK message verifies if he has that chunk,
      * and if he has then he put on this arraylist
      * String will be <fileID>_<chunkNo>
      */
     private ArrayList<String> restoredChunkList;
-
     /**
      * Stores the chunks that are marked for deletion
      * Used in the enhanced version of the File Deletion Subprotocol
-     *
+     * <p>
      * key = <fileID>_<ChunkNo>
      * value = array with the peer id of the peers that have stored that chunk
      */
     private ConcurrentHashMap<String, ArrayList<Integer>> markedForDeletion;
-
-
     /**
      * used to write perceived chunk replication degrees to a file
      */
     private Properties chunkRepDegProperties;
-
-    private final String chunksPath;
-    private final String serverId;
     private long occupiedSpace;
 
     public ChunkManager(String serverId, String chunksPath) {
@@ -76,7 +70,7 @@ public class ChunkManager {
         this.serverId = serverId;
         this.chunksPath = chunksPath;
 
-        if(!loadState()) {
+        if (!loadState()) {
             desiredFileReplicationDegrees = new ConcurrentHashMap<>();
             storedChunks = new ConcurrentHashMap<>();
             chunkMap = new ConcurrentHashMap<>();
@@ -103,10 +97,10 @@ public class ChunkManager {
     /**
      * Saves the chunk replication degrees to a file
      */
-    private boolean saveReplicationDegrees(){
+    private boolean saveReplicationDegrees() {
         chunkRepDegProperties.putAll(perceivedChunkRepDeg);
         try {
-            chunkRepDegProperties.store(new FileOutputStream(PeerService.PEER_DIRECTORY + serverId + '/' + CHUNK_MAP_FILENAME),"FileID_ChunkNo=PerceivedReplicationDegree");
+            chunkRepDegProperties.store(new FileOutputStream(PeerService.PEER_DIRECTORY + serverId + '/' + CHUNK_MAP_FILENAME), "FileID_ChunkNo=PerceivedReplicationDegree");
         } catch (IOException e) {
             System.err.println("Failed to write to chunk file");
             return false;
@@ -116,9 +110,10 @@ public class ChunkManager {
 
     /**
      * Writes the state of the peer to a file
+     *
      * @return true if write was successful
      */
-    private synchronized boolean saveState(){
+    private synchronized boolean saveState() {
         try {
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(PeerService.PEER_DIRECTORY + serverId + '/' + STATE_FILENAME));
             oos.writeObject(numChunksFile);
@@ -136,16 +131,16 @@ public class ChunkManager {
         return true;
     }
 
-    private boolean loadState(){
+    private boolean loadState() {
         try {
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId+'/'+STATE_FILENAME));
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId + '/' + STATE_FILENAME));
             numChunksFile = (ConcurrentHashMap<String, Integer>) ois.readObject();
-            chunkMap = (ConcurrentHashMap<String,ArrayList<Integer>>) ois.readObject();
-            perceivedChunkRepDeg = (ConcurrentHashMap<String,String>) ois.readObject();
-            desiredFileReplicationDegrees = (ConcurrentHashMap<String,Integer>) ois.readObject();
-            storedChunks = (ConcurrentHashMap<String,ArrayList<Integer>>) ois.readObject();
+            chunkMap = (ConcurrentHashMap<String, ArrayList<Integer>>) ois.readObject();
+            perceivedChunkRepDeg = (ConcurrentHashMap<String, String>) ois.readObject();
+            desiredFileReplicationDegrees = (ConcurrentHashMap<String, Integer>) ois.readObject();
+            storedChunks = (ConcurrentHashMap<String, ArrayList<Integer>>) ois.readObject();
             restoredChunkList = (ArrayList<String>) ois.readObject();
-            markedForDeletion = (ConcurrentHashMap<String,ArrayList<Integer>>) ois.readObject();
+            markedForDeletion = (ConcurrentHashMap<String, ArrayList<Integer>>) ois.readObject();
             occupiedSpace = getOccupiedSpace();
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Unable to load peer state");
@@ -176,8 +171,8 @@ public class ChunkManager {
      * @param fileID file to check
      * @return desired replication degree of the file
      */
-    public int getDesiredReplicationDegree(String fileID){
-        return desiredFileReplicationDegrees.getOrDefault(fileID,-1);
+    public int getDesiredReplicationDegree(String fileID) {
+        return desiredFileReplicationDegrees.getOrDefault(fileID, -1);
     }
 
     /**
@@ -226,26 +221,25 @@ public class ChunkManager {
             return false;
 
         /* Check if the chunk is already stored */
-        if(hasChunk(fileID,Integer.parseInt(chunkNo)))
+        if (hasChunk(fileID, Integer.parseInt(chunkNo)))
             return true;
 
-        String chunkKey = fileID+"_"+chunkNo;
+        String chunkKey = fileID + "_" + chunkNo;
 
 
         try {
 
-            if(protocolVersion.equals("1.1")){
+            if (protocolVersion.equals("1.1")) {
                 sleep();
-                if(chunkMap.containsKey(chunkKey)){
+                if (chunkMap.containsKey(chunkKey)) {
                     //verifying if the replication degree desire by the peer was already reached
-                    if(getReplicationDegree(fileID,chunkNo) >= Integer.parseInt(replicationDegree)){
+                    if (getReplicationDegree(fileID, chunkNo) >= Integer.parseInt(replicationDegree)) {
                         return false;
                     }
                 }
-                writeChunkToMemory(fileID,chunkNo,chunkData);
-            }
-            else {
-                writeChunkToMemory(fileID,chunkNo,chunkData);
+                writeChunkToMemory(fileID, chunkNo, chunkData);
+            } else {
+                writeChunkToMemory(fileID, chunkNo, chunkData);
                 sleep();
             }
 
@@ -261,8 +255,9 @@ public class ChunkManager {
 
     /**
      * Writes a chunk of a given file to memory
-     * @param fileID id of the file
-     * @param chunkNo number of the chunk
+     *
+     * @param fileID    id of the file
+     * @param chunkNo   number of the chunk
      * @param chunkData data of the chunk
      * @throws IOException
      */
@@ -274,6 +269,7 @@ public class ChunkManager {
 
     /**
      * Sleeps inside of a range from 0 to 400 ms
+     *
      * @throws InterruptedException
      */
     public void sleep() throws InterruptedException {
@@ -303,7 +299,7 @@ public class ChunkManager {
             chunkPeers = new ArrayList<>();
             chunkPeers.add(sender);
             chunkMap.put(chunkKey, chunkPeers);
-            perceivedChunkRepDeg.put(chunkKey,"1");
+            perceivedChunkRepDeg.put(chunkKey, "1");
         } else {
             for (Integer chunkPeer : chunkPeers) {
                 if (chunkPeer == sender)    // peer was already registered
@@ -318,7 +314,6 @@ public class ChunkManager {
     }
 
     /**
-     *
      * Called when a peer receives a REMOVED message from another peer
      * It updates the peer's chunkMap to reflect the perceived
      * replication degree of the chunk
@@ -327,20 +322,20 @@ public class ChunkManager {
      * @param senderID        id of the sender of the REMOVED message
      * @param fileID          id of the file whose chunk was removed
      * @param chunkNo         chunk number of the removed chunk
-     * @return                true on success, false if the file was not registered on this peer
+     * @return true on success, false if the file was not registered on this peer
      */
-    public boolean registerRemoval(String protocolVersion, String senderID, String fileID, String chunkNo){
+    public boolean registerRemoval(String protocolVersion, String senderID, String fileID, String chunkNo) {
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
             return false;
 
         String chunkKey = fileID + '_' + chunkNo;
         ArrayList<Integer> chunkPeers = chunkMap.get(chunkKey);
-        if(chunkPeers == null) //file not registered on the server
+        if (chunkPeers == null) //file not registered on the server
             return false;
 
         Object sender = Integer.parseInt(senderID);
         chunkPeers.remove(sender);
-        perceivedChunkRepDeg.replace(chunkKey,Integer.toString(chunkPeers.size()));
+        perceivedChunkRepDeg.replace(chunkKey, Integer.toString(chunkPeers.size()));
         saveReplicationDegrees();
         saveState();
         return true;
@@ -396,13 +391,14 @@ public class ChunkManager {
     /**
      * Marks the chunks belonging to a file as set for deletion
      * Used in the enhanced version of the File Deletion Subprotocol
+     *
      * @param fileID ID of the file to be deleted
      */
-    public void markForDeletion(String fileID){
+    public void markForDeletion(String fileID) {
 
-        for(Map.Entry<String,ArrayList<Integer>> entry : chunkMap.entrySet()){
-            if(entry.getKey().startsWith(fileID)) {
-                markedForDeletion.put(entry.getKey(),chunkMap.get(entry.getKey()));
+        for (Map.Entry<String, ArrayList<Integer>> entry : chunkMap.entrySet()) {
+            if (entry.getKey().startsWith(fileID)) {
+                markedForDeletion.put(entry.getKey(), chunkMap.get(entry.getKey()));
                 chunkMap.remove(entry.getKey());
                 perceivedChunkRepDeg.remove(entry.getKey());
             }
@@ -415,39 +411,40 @@ public class ChunkManager {
     /**
      * Called when a peer receives a DELETED message
      * Updates the markedForDeletion map
-     * @param senderID  ID of the peer who sent the DELETED message
-     * @param fileID    ID of the file who's chunk was deleted
-     * @param chunkNo   Number of the deleted chunk
+     *
+     * @param senderID ID of the peer who sent the DELETED message
+     * @param fileID   ID of the file who's chunk was deleted
+     * @param chunkNo  Number of the deleted chunk
      */
-    public void registerDeletion(String senderID, String fileID, String chunkNo){
+    public void registerDeletion(String senderID, String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         ArrayList<Integer> chunkPeers = markedForDeletion.get(key);
-        if(chunkPeers == null)
+        if (chunkPeers == null)
             return;
 
         Integer sender = Integer.parseInt(senderID);
 
-        if(chunkPeers.contains(sender))
+        if (chunkPeers.contains(sender))
             chunkPeers.remove(sender);
 
-        if(chunkPeers.isEmpty())
+        if (chunkPeers.isEmpty())
             markedForDeletion.remove(key);
 
         saveState();
     }
 
-    public ArrayList<String> checkDeletion(String senderID){
-        if(markedForDeletion.isEmpty())
+    public ArrayList<String> checkDeletion(String senderID) {
+        if (markedForDeletion.isEmpty())
             return null;
 
         ArrayList<String> toDelete = new ArrayList<>();
-        if(!markedForDeletion.isEmpty()){
+        if (!markedForDeletion.isEmpty()) {
             Integer sender = Integer.parseInt(senderID);
-            for(Map.Entry<String,ArrayList<Integer>> entry : markedForDeletion.entrySet()){
+            for (Map.Entry<String, ArrayList<Integer>> entry : markedForDeletion.entrySet()) {
                 ArrayList<Integer> chunkPeers = entry.getValue();
-                if(chunkPeers.contains(sender)){
+                if (chunkPeers.contains(sender)) {
                     String fileID = entry.getKey().split("_")[0];
-                    if(!toDelete.contains(fileID))
+                    if (!toDelete.contains(fileID))
                         toDelete.add(fileID);
                 }
             }
@@ -456,10 +453,10 @@ public class ChunkManager {
         return toDelete;
     }
 
-    public boolean isMarkedForDeletion(String fileID){
-        if(!markedForDeletion.isEmpty()){
-            for(Map.Entry<String,ArrayList<Integer>> entry : markedForDeletion.entrySet()){
-                if(entry.getKey().startsWith(fileID))
+    public boolean isMarkedForDeletion(String fileID) {
+        if (!markedForDeletion.isEmpty()) {
+            for (Map.Entry<String, ArrayList<Integer>> entry : markedForDeletion.entrySet()) {
+                if (entry.getKey().startsWith(fileID))
                     return true;
             }
         }
@@ -477,9 +474,7 @@ public class ChunkManager {
         ArrayList<String> deletedChunks = null;
         if (fileChunks == null) {  // peer has no chunks belonging to this file
             System.out.format("This peer has no chunks belonging to the file with file ID %s\n", fileID);
-        }
-
-        else {
+        } else {
             deletedChunks = new ArrayList<>();
             for (Integer fileChunk : fileChunks) {
                 String chunkNo = Integer.toString(fileChunk);
@@ -497,7 +492,7 @@ public class ChunkManager {
             storedChunks.remove(fileID);
         }
 
-        if(desiredFileReplicationDegrees.containsKey(fileID))
+        if (desiredFileReplicationDegrees.containsKey(fileID))
             desiredFileReplicationDegrees.remove(fileID);
 
 
@@ -535,11 +530,11 @@ public class ChunkManager {
      * @param availableSpace maximum space to be occupied by the stored chunks
      * @return ArrayList with the names of the deleted files
      */
-    public ArrayList<String> reclaimSpace(long availableSpace){
+    public ArrayList<String> reclaimSpace(long availableSpace) {
         File chunkDir = new File(chunksPath);
         ArrayList<String> deletedChunks = new ArrayList<>();
 
-        while(getOccupiedSpace() > availableSpace) {
+        while (getOccupiedSpace() > availableSpace) {
 
             File[] chunks = chunkDir.listFiles();
             if (chunks == null)
@@ -558,13 +553,13 @@ public class ChunkManager {
             for (File chunk : chunks) {
 
                 String[] chunkInfo = chunk.getName().split("_");
-                if(chunkInfo.length < 2)
+                if (chunkInfo.length < 2)
                     chunk.delete();
 
                 fileID = chunkInfo[0];
                 chunkNo = chunkInfo[1];
 
-                if(getReplicationDegree(fileID,chunkNo) > getReplicationDegree(toDeleteFileID,toDeleteChunkNo)){
+                if (getReplicationDegree(fileID, chunkNo) > getReplicationDegree(toDeleteFileID, toDeleteChunkNo)) {
                     toDelete = chunk;
                     toDeleteFileID = fileID;
                     toDeleteChunkNo = chunkNo;
@@ -592,12 +587,13 @@ public class ChunkManager {
 
     /**
      * Get the space occupied by the chunks this peer is storing
+     *
      * @return occupied space, in bytes
      */
-    public long getOccupiedSpace(){
+    public long getOccupiedSpace() {
         File chunkDir = new File(chunksPath);
         long occupiedSpace = 0;
-        for(File file : chunkDir.listFiles()){
+        for (File file : chunkDir.listFiles()) {
             occupiedSpace += file.length();
         }
         return occupiedSpace;
@@ -606,18 +602,19 @@ public class ChunkManager {
     /**
      * Verifies if a given chunk from a file is stored on the peer,
      * and if this is the case, the peer adds to the restoreChunkList
-     * @param fileID id from the file
+     *
+     * @param fileID  id from the file
      * @param chunkNo number of the chunk
      * @return true if it has the chunk, false otherwise
      */
-    public boolean registerChunkMessage(String fileID, String chunkNo){
+    public boolean registerChunkMessage(String fileID, String chunkNo) {
 
-        if(!hasChunk(fileID, Integer.parseInt(chunkNo))){
+        if (!hasChunk(fileID, Integer.parseInt(chunkNo))) {
             return false;
         }
 
-        if(!restoredChunkList.contains(fileID+"_"+chunkNo)){
-            restoredChunkList.add(fileID+"_"+chunkNo);
+        if (!restoredChunkList.contains(fileID + "_" + chunkNo)) {
+            restoredChunkList.add(fileID + "_" + chunkNo);
         }
 
         return true;
@@ -625,14 +622,15 @@ public class ChunkManager {
 
     /**
      * verifies if a chunk message was already sent for that specific chunk
-     * @param fileID id from the file
+     *
+     * @param fileID  id from the file
      * @param chunkNo number of the chunk
      * @return true if the peer can send the message, false otherwise
      */
-    public boolean canSendChunkMessage(String fileID, String chunkNo){
+    public boolean canSendChunkMessage(String fileID, String chunkNo) {
 
-        if(restoredChunkList.contains(fileID+"_"+chunkNo)){
-            restoredChunkList.remove(fileID+"_"+chunkNo);
+        if (restoredChunkList.contains(fileID + "_" + chunkNo)) {
+            restoredChunkList.remove(fileID + "_" + chunkNo);
             return false;
         }
 
@@ -641,31 +639,32 @@ public class ChunkManager {
 
     /**
      * Given a file id it returns the file state, replication degree, chunks,...
+     *
      * @param fileID id of the file
      * @return A string with all of the information
      */
-    public String getFileCurrentState(String fileID){
+    public String getFileCurrentState(String fileID) {
         final String[] currentState = {""};
 
-        currentState[0] += "\tDesired replication degree: " + desiredFileReplicationDegrees.get(fileID)+"\n";
+        currentState[0] += "\tDesired replication degree: " + desiredFileReplicationDegrees.get(fileID) + "\n";
 
-        perceivedChunkRepDeg.forEach((key,value)->{
+        perceivedChunkRepDeg.forEach((key, value) -> {
             String[] keyParts = key.split("_");
-            if(keyParts[0].equals(fileID)){
+            if (keyParts[0].equals(fileID)) {
                 currentState[0] += "\tChunk ID: " + keyParts[1] + "\n";
-                currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(key) +"\n";
+                currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(key) + "\n";
             }
         });
 
         return currentState[0];
     }
 
-    public String getChunksState(){
+    public String getChunksState() {
         final String[] currentState = {""};
 
-        storedChunks.forEach((fileID,chunks)->{
-            for(Integer chunk: chunks){
-                currentState[0] += "\tChunk ID: "+ fileID + "_" + chunk + "\n";
+        storedChunks.forEach((fileID, chunks) -> {
+            for (Integer chunk : chunks) {
+                currentState[0] += "\tChunk ID: " + fileID + "_" + chunk + "\n";
 
                 // TODO get chunk size
 //                if((chunk + 1) == numberOfChunks)
@@ -673,7 +672,7 @@ public class ChunkManager {
 //                else
 //                    currentState[0] += "\tChunk Size 64 Kb\n";
 
-                currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(fileID+"_"+chunk) + "\n";
+                currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(fileID + "_" + chunk) + "\n";
             }
 
         });

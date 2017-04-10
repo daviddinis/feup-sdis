@@ -36,7 +36,7 @@ public class ClientInterface {
 
         try {
             switch (operation.toUpperCase()) {
-               case "BACKUP":
+                case "BACKUP":
                     filepath = args[2];
                     replicationDegree = Integer.parseInt(args[3]);
                     System.out.println("Requesting backup of file " + filepath + " with a replication degree of " + replicationDegree);
@@ -63,7 +63,7 @@ public class ClientInterface {
                 default:
                     break;
             }
-        }catch (IllegalArgumentException e){
+        } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
         }
 

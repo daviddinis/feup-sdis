@@ -13,10 +13,8 @@ public class PeerChannel {
 
     private final InetAddress addr;
     private final int port;
-
-    private MulticastSocket socket;
-
     private final PeerService peer;
+    private MulticastSocket socket;
 
     public PeerChannel(InetAddress addr, int port, PeerService peer) throws IOException {
         this.addr = addr;
@@ -67,7 +65,7 @@ public class PeerChannel {
         byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
         Runnable task = () -> {
-        peer.messageHandler(buffer, packet.getLength(),packet.getAddress());
+            peer.messageHandler(buffer, packet.getLength(), packet.getAddress());
         };
 
         ExecutorService service = Executors.newFixedThreadPool(10);
