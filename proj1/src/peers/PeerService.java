@@ -56,6 +56,16 @@ public class PeerService {
      **/
     private long availableSpace;
 
+    /**
+     * Stores chunk identfiers i.e, <FileID>_<chunkNo>
+     * of chunks that are in the process of being backed up by other peers
+     * and the amount of times the PUTCHUNK request has been made
+     *
+     * key = <fileID>_<chunkNo>
+     * value = amount of times the PUTCHUNK request has been made
+     */
+    private ConcurrentHashMap<String, Integer> markedForBackup;
+
     private ArrayList<String> myFileIDs;
 
     private ArrayList<String> myFileNames;
@@ -118,6 +128,8 @@ public class PeerService {
 
         // for restore enhancement
         dataRestorePort = mdrPort;
+
+        markedForBackup = new ConcurrentHashMap<>();
 
         if(protocolVersion.equals("1.3")) {
             try {
@@ -212,6 +224,7 @@ public class PeerService {
             System.arraycopy(chunk, 0, buf, headerBytes.length, chunk.length);
 
             do {
+                counter++;
                 System.out.println(counter);
                 if (dataBackupChannel.sendMessage(buf))
                     printHeader(header, true);
@@ -234,7 +247,6 @@ public class PeerService {
                     System.err.println("InterruptedException :: PeerService :: Retrying");
                     continue;
                 }
-                counter++;
                 multiplier *= 2;
             }
             while (counter <= 5 && chunkManager.getReplicationDegree(fileId, Integer.toString(chunkNo)) < replicationDegree);
@@ -302,7 +314,6 @@ public class PeerService {
         String messageHeader[] = header.split(" ");
 
         //check message type
-        System.out.println(header);
         String messageType = messageHeader[0];
         String protocolVersion = messageHeader[1];
         String senderID = messageHeader[2];
@@ -333,7 +344,16 @@ public class PeerService {
                     break;
 		}
 
-                chunkManager.markForBackup(fileID, chunkNo);
+		        if(!isMarkedForBackup(fileID,chunkNo)) {
+                    markForBackup(fileID, chunkNo);
+                    System.out.println("MARKING BACKUP!");
+                    if(protocolVersion.equals("1.4"))
+                        trackBackup(fileID,chunkNo);
+                }
+                else {
+                    incrementBackupRequests(fileID, chunkNo);
+                    System.out.format("Number of backup requests: %d\n", getNumBackupRequests(fileID, chunkNo));
+                }
 
                 input.read(chunk, 0, input.available());
                 if(chunkManager.storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk)) {
@@ -343,6 +363,8 @@ public class PeerService {
                     chunkManager.registerStorage(protocolVersion, this.serverId, fileID, chunkNo);
                     printHeader(response, true);
                 }
+
+
                 break;
             }
             case "STORED": {
@@ -355,7 +377,7 @@ public class PeerService {
                 String chunkNo = messageHeader[4];
                 chunkManager.registerStorage(protocolVersion, senderID, fileID, chunkNo);
                 if(chunkManager.getReplicationDegree(fileID, chunkNo) >= chunkManager.getDesiredReplicationDegree(fileID))
-                    chunkManager.unmarkForBackup(fileID, chunkNo);
+                    unmarkForBackup(fileID, chunkNo);
                 break;
             }
             case "GETCHUNK": {
@@ -426,7 +448,8 @@ public class PeerService {
                 String chunkNo = messageHeader[4];
                 printHeader(header, false);
 
-                if(!chunkManager.registerRemoval(protocolVersion,senderID,fileID, chunkNo)) //file not registered on the peer
+                if(!chunkManager.registerRemoval(protocolVersion,senderID,fileID, chunkNo)
+                        | !chunkManager.hasChunk(fileID,Integer.parseInt(chunkNo))) //file not registered on the peer
                     break;
 
                 int desiredReplicationDegree = chunkManager.getDesiredReplicationDegree(fileID);
@@ -440,11 +463,19 @@ public class PeerService {
                         byte[] chunk = chunkManager.getChunkData(fileID, chunkNo);
                         Random random = new Random();
                         Thread.sleep((long) random.nextInt(400));
-                        if(!chunkManager.isMarkedForBackup(fileID, chunkNo))
+                        if(!isMarkedForBackup(fileID, chunkNo)) {
                             requestChunkBackup(fileID, Integer.parseInt(chunkNo), desiredReplicationDegree, chunk);
+
+                            if(protocolVersion.equals("1.4")){
+                                trackBackup(fileID, chunkNo);
+                            }
+                        }
                     } catch (IOException | InterruptedException e) {
                         e.printStackTrace();
                     }
+                } else { // Desired replication degree has been satisfied
+                    if(isMarkedForBackup(fileID,chunkNo))
+                        unmarkForBackup(fileID,chunkNo);
                 }
                 break;
             }
@@ -473,6 +504,65 @@ public class PeerService {
         }
     }
 
+    private void trackBackup(String fileID, String chunkNo){
+        Runnable task = () -> {
+            System.out.println("\n\nLAUNCHED\n\n");
+            try {
+                Thread.sleep(35000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            if(isMarkedForBackup(fileID,chunkNo) && getNumBackupRequests(fileID, chunkNo) >= 5){
+                unmarkForBackup(fileID, chunkNo);
+                System.out.format("Backup Timed out normally, no action to be taken");
+                return;
+            }
+
+            int desiredReplicationDegree = chunkManager.getDesiredReplicationDegree(fileID);
+            int perceivedReplicationDegree = chunkManager.getReplicationDegree(fileID,chunkNo);
+
+            if(desiredReplicationDegree > perceivedReplicationDegree){
+                /*
+                   Check if the initiator peer made 5 backup requests
+                   if not, it indicates something went wrong with the initiator
+                   peer during the backup
+                 */
+                System.out.format("Replication degree for chunk %s of file %s is under the desired level.\n" +
+                        "Desired = %d; Perceived = %d\n", chunkNo, fileID, desiredReplicationDegree, perceivedReplicationDegree
+                );
+
+                if(getNumBackupRequests(fileID,chunkNo) < 5){
+                    unmarkForBackup(fileID,chunkNo);
+
+                    try {
+                        Random random = new Random();
+                        long waitTime = (long)random.nextInt(400);
+                        System.out.println(waitTime);
+                        Thread.sleep(waitTime);
+
+                        if(isMarkedForBackup(fileID, chunkNo)) { // Other peer took the responsibility
+                            return;
+                        }
+
+                        byte[] chunk = chunkManager.getChunkData(fileID, chunkNo);
+                        requestChunkBackup(fileID,Integer.parseInt(chunkNo),desiredReplicationDegree, chunk);
+
+                    } catch (IOException | InterruptedException e ) {
+                        System.err.println("Unable to read chunk data");
+                    }
+                }
+                else {
+                    unmarkForBackup(fileID,chunkNo);
+                }
+            }
+            else {
+                System.out.println("Chunk Backup request successfully complete! No action to take!");
+                unmarkForBackup(fileID,chunkNo);
+            }
+        };
+        task.run();
+    }
 
 
     /**
@@ -599,7 +689,7 @@ public class PeerService {
         System.arraycopy(headerBytes, 0, buf, 0, headerBytes.length);
         System.arraycopy(chunkData, 0, buf, headerBytes.length, chunkData.length);
 
-        Random random = new Random(System.currentTimeMillis());
+        Random random = new Random();
         long waitTime = random.nextInt(400);
         try {
             Thread.sleep(waitTime);
@@ -720,6 +810,33 @@ public class PeerService {
         ExecutorService service = Executors.newFixedThreadPool(10);
 
         service.execute(task);
+    }
+
+    private void markForBackup(String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        if(!markedForBackup.containsKey(key))
+            markedForBackup.put(key,1);
+    }
+
+    private boolean isMarkedForBackup(String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        return markedForBackup.containsKey(key);
+    }
+
+    private void unmarkForBackup(String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        if(markedForBackup.containsKey(key))
+            markedForBackup.remove(key);
+    }
+
+    private int getNumBackupRequests(String fileID, String chunkNo){
+        String key = fileID + '_' + chunkNo;
+        return markedForBackup.getOrDefault(key,-1);
+    }
+
+    private void incrementBackupRequests(String fileID, String chunkNo) {
+        String key = fileID + '_' + chunkNo;
+        markedForBackup.replace(key, markedForBackup.get(key) + 1);
     }
 
     public String getCurrentState() {

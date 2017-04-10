@@ -61,12 +61,6 @@ public class ChunkManager {
      */
     private ConcurrentHashMap<String, ArrayList<Integer>> markedForDeletion;
 
-    /**
-     * Stores chunk identfiers i.e, <FileID>_<chunkNo>
-     * of chunks that are in the process of being backed up
-     * by other peers
-     */
-    private ArrayList<String> markedForBackup;
 
     /**
      * used to write perceived chunk replication degrees to a file
@@ -93,7 +87,6 @@ public class ChunkManager {
             markedForDeletion = new ConcurrentHashMap<>();
         }
 
-        markedForBackup = new ArrayList<>();
         chunkRepDegProperties = new Properties();
 
         /* Create chunk replication degree file */
@@ -353,22 +346,6 @@ public class ChunkManager {
         return true;
     }
 
-    public void markForBackup(String fileID, String chunkNo){
-        String key = fileID + '_' + chunkNo;
-        if(!markedForBackup.contains(key))
-            markedForBackup.add(key);
-    }
-
-    public boolean isMarkedForBackup(String fileID, String chunkNo){
-        String key = fileID + '_' + chunkNo;
-        return markedForBackup.contains(key);
-    }
-
-    public void unmarkForBackup(String fileID, String chunkNo){
-        String key = fileID + '_' + chunkNo;
-        if(markedForBackup.contains(key))
-            markedForBackup.remove(key);
-    }
 
     /**
      * Verifies if a given chunk of a given file is stored on the peer
@@ -562,9 +539,7 @@ public class ChunkManager {
         File chunkDir = new File(chunksPath);
         ArrayList<String> deletedChunks = new ArrayList<>();
 
-        System.out.println(getOccupiedSpace());
         while(getOccupiedSpace() > availableSpace) {
-            System.out.println(getOccupiedSpace());
 
             File[] chunks = chunkDir.listFiles();
             if (chunks == null)
@@ -601,10 +576,12 @@ public class ChunkManager {
             String key = toDeleteFileID + '_' + toDeleteChunkNo;
 
             ArrayList<Integer> chunkPeers = chunkMap.get(key);
-            chunkPeers.remove(this.serverId);
+            Object server = Integer.parseInt(serverId);
+            chunkPeers.remove(server);
             perceivedChunkRepDeg.replace(key, Integer.toString(Integer.parseInt(perceivedChunkRepDeg.get(key)) + 1));
             ArrayList<Integer> fileChunks = storedChunks.get(toDeleteFileID);
-            fileChunks.remove(Integer.parseInt(toDeleteChunkNo));
+            Object chkNo = Integer.parseInt(toDeleteChunkNo);
+            fileChunks.remove(chkNo);
 
             saveReplicationDegrees();
             saveState();
