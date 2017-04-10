@@ -554,7 +554,7 @@ class PeerService {
                 unmarkForBackup(fileID, chunkNo);
             }
         };
-        task.run();
+        new Thread(task).start();
     }
 
 
