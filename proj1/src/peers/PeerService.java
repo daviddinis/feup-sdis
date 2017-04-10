@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class PeerService {
+class PeerService {
 
     public static final int CHUNK_SIZE = 64000;
     public static final int ERROR = -1;
@@ -27,7 +27,7 @@ public class PeerService {
      * Port used on restore enhancement
      */
     private final int dataRestorePort;
-    private String protocolVersion;
+    private final String protocolVersion;
     private PeerChannel controlChannel;
     private PeerChannel dataBackupChannel;
     private PeerChannel dataRestoreChannel;
@@ -294,7 +294,7 @@ public class PeerService {
      * @param message received message
      * @param address
      */
-    public void messageHandler(byte[] message, int messageLength, InetAddress address) {
+    public void messageHandler(byte[] message, InetAddress address) {
 
         ByteArrayInputStream input = new ByteArrayInputStream(message);
 
@@ -606,7 +606,7 @@ public class PeerService {
      * @param fileId  id of the file to be restored
      * @param chunkNo Chunk number
      */
-    public void requestChunkRestore(String fileId, int chunkNo) throws IOException {
+    public void requestChunkRestore(String fileId, int chunkNo) {
 
         Runnable task = () -> {
             int counter = 1, multiplier = 1;
@@ -643,7 +643,7 @@ public class PeerService {
                 counter++;
                 multiplier *= 2;
             }
-            while (!fileRestorer.getRestoredChunks().containsKey(chunkNo) && restoredChunksObjects.containsKey(fileId));
+            while (!fileRestorer.getRestoredChunks().containsKey(Integer.toString(chunkNo)) && restoredChunksObjects.containsKey(fileId));
         };
 
         new Thread(task).start();
@@ -663,10 +663,10 @@ public class PeerService {
     }
 
 
-    private boolean sendChunk(String protocolVersion, String senderID, String fileID, String chunkNo, InetAddress address) {
+    private void sendChunk(String protocolVersion, String senderID, String fileID, String chunkNo, InetAddress address) {
 
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
-            return false;
+            return;
 
         byte[] chunkData = new byte[0];
         try {
@@ -712,7 +712,6 @@ public class PeerService {
             //TODO random time uniformly distributed
         }
 
-        return true;
     }
 
     /**
@@ -723,7 +722,7 @@ public class PeerService {
      * @param fileId            file ID of the file to backup
      * @param replicationDegree desired replication degree of the file to backup
      * @param numChunks         number of chunks in the file to backup
-     * @param filepath
+     * @param filepath          file to register
      */
     public void registerFile(String fileId, int replicationDegree, int numChunks, String filepath) {
         myFileIDs.add(fileId);
@@ -765,8 +764,9 @@ public class PeerService {
         restoreTCPSocket = new ServerSocket(dataRestorePort);
 
         Runnable task = () -> {
-            Socket dataSocket = null;
+            Socket dataSocket;
 
+            //noinspection InfiniteLoopStatement
             while (true) {
 
                 try {
@@ -787,17 +787,17 @@ public class PeerService {
      * @param dataSocket socket from where the message is read
      * @throws IOException
      */
-    public void processRestoreMessage(Socket dataSocket) throws IOException {
+    private void processRestoreMessage(Socket dataSocket) {
 
         Runnable task = () -> {
-            DataInputStream input = null;
+            DataInputStream input;
             try {
                 input = new DataInputStream(dataSocket.getInputStream());
                 byte[] chunkData = new byte[input.available()];
 
                 input.readFully(chunkData);
 
-                messageHandler(chunkData, chunkData.length, dataSocket.getInetAddress());
+                messageHandler(chunkData, dataSocket.getInetAddress());
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -859,7 +859,7 @@ public class PeerService {
         return currentState;
     }
 
-    public void saveMyFiles() {
+    private void saveMyFiles() {
         try {
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(PEER_DIRECTORY + serverId + '/' + MYFILES_FILENAME));
             oos.writeObject(myFileIDs);
@@ -869,10 +869,12 @@ public class PeerService {
         }
     }
 
-    public void loadMyFiles() {
+    private void loadMyFiles() {
         try {
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream(PEER_DIRECTORY + serverId + '/' + MYFILES_FILENAME));
+            //noinspection unchecked
             myFileIDs = (ArrayList<String>) ois.readObject();
+            //noinspection unchecked
             myFileNames = (ArrayList<String>) ois.readObject();
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("Unable to load peer filenames");

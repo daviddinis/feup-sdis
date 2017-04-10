@@ -22,7 +22,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
     private final PeerService peer;
 
-    public PeerClientLink(PeerService peer) throws RemoteException {
+    PeerClientLink(PeerService peer) throws RemoteException {
         this.peer = peer;
     }
 
@@ -32,7 +32,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             throw new IllegalArgumentException("Invalid arguments for backup");
         }
 
-        FileInputStream file = null;
+        FileInputStream file;
         String path;
         if (filepath.startsWith(peer.getMyFilesPath()))
             path = filepath;
@@ -135,6 +135,13 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         return state;
     }
 
+    /**
+     * Compute the file hash, based on its name and modification date
+     *
+     * @param filepath file to hash
+     * @return file hash
+     * @throws IOException
+     */
     private String getFileHash(String filepath) throws IOException {
         Path path = Paths.get(filepath);
 

@@ -8,13 +8,17 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ChunkManager {
+class ChunkManager {
 
     private static final String CHUNK_MAP_FILENAME = "chunk_info";
     private static final String STATE_FILENAME = ".peer_data";
     private static final int MAX_SLEEP_TIME = 400;
     private final String chunksPath;
     private final String serverId;
+    /**
+     * used to write perceived chunk replication degrees to a file
+     */
+    private final Properties chunkRepDegProperties;
     /**
      * stores the number of chunks every file has
      * key = <fileID>_<ChunkNo>
@@ -47,7 +51,7 @@ public class ChunkManager {
     private ConcurrentHashMap<String, ArrayList<Integer>> storedChunks;
     /**
      * when the peer receives a CHUNK message verifies if he has that chunk,
-     * and if he has then he put on this arraylist
+     * and if he has then he put on this array list
      * String will be <fileID>_<chunkNo>
      */
     private ArrayList<String> restoredChunkList;
@@ -59,12 +63,14 @@ public class ChunkManager {
      * value = array with the peer id of the peers that have stored that chunk
      */
     private ConcurrentHashMap<String, ArrayList<Integer>> markedForDeletion;
-    /**
-     * used to write perceived chunk replication degrees to a file
-     */
-    private Properties chunkRepDegProperties;
     private long occupiedSpace;
 
+    /**
+     * Chunk Manager - deals with all the operations relating specifically to the chunks
+     *
+     * @param serverId   id of the peer this chunk manager belongs to
+     * @param chunksPath path of the directory where the chunks are stored
+     */
     public ChunkManager(String serverId, String chunksPath) {
 
         this.serverId = serverId;
@@ -97,15 +103,13 @@ public class ChunkManager {
     /**
      * Saves the chunk replication degrees to a file
      */
-    private boolean saveReplicationDegrees() {
+    private void saveReplicationDegrees() {
         chunkRepDegProperties.putAll(perceivedChunkRepDeg);
         try {
             chunkRepDegProperties.store(new FileOutputStream(PeerService.PEER_DIRECTORY + serverId + '/' + CHUNK_MAP_FILENAME), "FileID_ChunkNo=PerceivedReplicationDegree");
         } catch (IOException e) {
             System.err.println("Failed to write to chunk file");
-            return false;
         }
-        return true;
     }
 
     /**
@@ -113,7 +117,7 @@ public class ChunkManager {
      *
      * @return true if write was successful
      */
-    private synchronized boolean saveState() {
+    private synchronized void saveState() {
         try {
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(PeerService.PEER_DIRECTORY + serverId + '/' + STATE_FILENAME));
             oos.writeObject(numChunksFile);
@@ -126,20 +130,30 @@ public class ChunkManager {
             oos.close();
         } catch (IOException e) {
             System.err.println("Unable to open state file");
-            return false;
         }
-        return true;
     }
 
+    /**
+     * Reads the saved file and loads the peer state
+     *
+     * @return true if read was successful
+     */
     private boolean loadState() {
         try {
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId + '/' + STATE_FILENAME));
+            //noinspection unchecked
             numChunksFile = (ConcurrentHashMap<String, Integer>) ois.readObject();
+            //noinspection unchecked
             chunkMap = (ConcurrentHashMap<String, ArrayList<Integer>>) ois.readObject();
+            //noinspection unchecked
             perceivedChunkRepDeg = (ConcurrentHashMap<String, String>) ois.readObject();
+            //noinspection unchecked
             desiredFileReplicationDegrees = (ConcurrentHashMap<String, Integer>) ois.readObject();
+            //noinspection unchecked
             storedChunks = (ConcurrentHashMap<String, ArrayList<Integer>>) ois.readObject();
+            //noinspection unchecked
             restoredChunkList = (ArrayList<String>) ois.readObject();
+            //noinspection unchecked
             markedForDeletion = (ConcurrentHashMap<String, ArrayList<Integer>>) ois.readObject();
             occupiedSpace = getOccupiedSpace();
         } catch (IOException | ClassNotFoundException e) {
@@ -261,7 +275,7 @@ public class ChunkManager {
      * @param chunkData data of the chunk
      * @throws IOException
      */
-    public void writeChunkToMemory(String fileID, String chunkNo, byte[] chunkData) throws IOException {
+    private void writeChunkToMemory(String fileID, String chunkNo, byte[] chunkData) throws IOException {
         String filename = fileID + "_" + chunkNo;
         FileOutputStream chunkFile = new FileOutputStream(chunksPath + "/" + filename);
         chunkFile.write(chunkData);
@@ -272,7 +286,7 @@ public class ChunkManager {
      *
      * @throws InterruptedException
      */
-    public void sleep() throws InterruptedException {
+    private void sleep() throws InterruptedException {
         Random random = new Random();
         long waitTime = random.nextInt(MAX_SLEEP_TIME);
         Thread.sleep(waitTime);
@@ -288,9 +302,9 @@ public class ChunkManager {
      * @param fileID          id of the file whose chunk was stored
      * @param chunkNo         chunk number of the stored chunk
      */
-    public boolean registerStorage(String protocolVersion, String senderID, String fileID, String chunkNo) {
+    public void registerStorage(String protocolVersion, String senderID, String fileID, String chunkNo) {
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
-            return false;
+            return;
 
         ArrayList<Integer> chunkPeers = chunkMap.get(fileID + '_' + chunkNo);
         String chunkKey = fileID + '_' + chunkNo;
@@ -303,14 +317,13 @@ public class ChunkManager {
         } else {
             for (Integer chunkPeer : chunkPeers) {
                 if (chunkPeer == sender)    // peer was already registered
-                    return true;
+                    return;
             }
             chunkPeers.add(sender);
             perceivedChunkRepDeg.replace(chunkKey, Integer.toString(chunkPeers.size()));
         }
         saveReplicationDegrees();
         saveState();
-        return true;
     }
 
     /**
@@ -370,12 +383,11 @@ public class ChunkManager {
         return chunkMap.containsKey(key) ? chunkMap.get(key).size() : -1;
     }
 
-    public boolean registerNumChunks(String fileID, int numChunks) {
+    public void registerNumChunks(String fileID, int numChunks) {
         if (numChunksFile.containsKey(fileID))
-            return false;
+            return;
 
         numChunksFile.put(fileID, numChunks);
-        return true;
     }
 
     /**
@@ -433,6 +445,12 @@ public class ChunkManager {
         saveState();
     }
 
+    /**
+     * Check if a given peer, identified by it's ID, has deleted all the chunks it should
+     *
+     * @param senderID id of the peer to check
+     * @return list of chunks the peer should remove
+     */
     public ArrayList<String> checkDeletion(String senderID) {
         if (markedForDeletion.isEmpty())
             return null;
@@ -440,6 +458,12 @@ public class ChunkManager {
         ArrayList<String> toDelete = new ArrayList<>();
         if (!markedForDeletion.isEmpty()) {
             Integer sender = Integer.parseInt(senderID);
+            /*
+                for all the entries in the hash map
+                check if the peer is still there
+                i.e. the peer has not deleted a chunk
+                it should have
+            */
             for (Map.Entry<String, ArrayList<Integer>> entry : markedForDeletion.entrySet()) {
                 ArrayList<Integer> chunkPeers = entry.getValue();
                 if (chunkPeers.contains(sender)) {
@@ -453,8 +477,15 @@ public class ChunkManager {
         return toDelete;
     }
 
+    /**
+     * Check if a file is marked for deletion
+     *
+     * @param fileID file to check
+     * @return true if the file is marked for deletion
+     */
     public boolean isMarkedForDeletion(String fileID) {
         if (!markedForDeletion.isEmpty()) {
+            /* checks all the entries to see if the chunk belongs to this file */
             for (Map.Entry<String, ArrayList<Integer>> entry : markedForDeletion.entrySet()) {
                 if (entry.getKey().startsWith(fileID))
                     return true;
@@ -502,6 +533,14 @@ public class ChunkManager {
         return deletedChunks;
     }
 
+    /**
+     * Fetch the content of a chunk
+     *
+     * @param fileID  file the chunk belongs to
+     * @param chunkNo chunk number
+     * @return byte array with the content of the chunk
+     * @throws IOException
+     */
     public byte[] getChunkData(String fileID, String chunkNo) throws IOException {
 
         String filename = fileID + "_" + chunkNo;
@@ -607,17 +646,16 @@ public class ChunkManager {
      * @param chunkNo number of the chunk
      * @return true if it has the chunk, false otherwise
      */
-    public boolean registerChunkMessage(String fileID, String chunkNo) {
+    public void registerChunkMessage(String fileID, String chunkNo) {
 
         if (!hasChunk(fileID, Integer.parseInt(chunkNo))) {
-            return false;
+            return;
         }
 
         if (!restoredChunkList.contains(fileID + "_" + chunkNo)) {
             restoredChunkList.add(fileID + "_" + chunkNo);
         }
 
-        return true;
     }
 
     /**
@@ -659,6 +697,11 @@ public class ChunkManager {
         return currentState[0];
     }
 
+    /**
+     * get information about the chunks
+     *
+     * @return
+     */
     public String getChunksState() {
         final String[] currentState = {""};
 

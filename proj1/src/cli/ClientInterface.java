@@ -7,7 +7,7 @@ import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-public class ClientInterface {
+class ClientInterface {
 
     private static InitiatorInterface initiatorPeer;
 

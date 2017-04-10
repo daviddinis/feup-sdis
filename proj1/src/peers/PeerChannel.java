@@ -1,7 +1,6 @@
 package peers;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -9,14 +8,14 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class PeerChannel {
+class PeerChannel {
 
     private final InetAddress addr;
     private final int port;
     private final PeerService peer;
     private MulticastSocket socket;
 
-    public PeerChannel(InetAddress addr, int port, PeerService peer) throws IOException {
+    PeerChannel(InetAddress addr, int port, PeerService peer) throws IOException {
         this.addr = addr;
         this.port = port;
         this.peer = peer;
@@ -26,7 +25,7 @@ public class PeerChannel {
         socket.joinGroup(this.addr);
     }
 
-    public void receiveMessage() throws IOException {
+    void receiveMessage() {
 
         Runnable task = () -> {
 
@@ -49,7 +48,7 @@ public class PeerChannel {
         new Thread(task).start();
     }
 
-    public boolean sendMessage(byte[] message) {
+    boolean sendMessage(byte[] message) {
 
         DatagramPacket packet = new DatagramPacket(message, message.length, addr, port);
 
@@ -61,12 +60,10 @@ public class PeerChannel {
         return true;
     }
 
-    private void channelMessageHandler(DatagramPacket packet) throws UnsupportedEncodingException {
+    private void channelMessageHandler(DatagramPacket packet) {
         byte[] buffer = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
 
-        Runnable task = () -> {
-            peer.messageHandler(buffer, packet.getLength(), packet.getAddress());
-        };
+        Runnable task = () -> peer.messageHandler(buffer, packet.getAddress());
 
         ExecutorService service = Executors.newFixedThreadPool(10);
 

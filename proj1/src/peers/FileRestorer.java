@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class FileRestorer {
+class FileRestorer {
 
     /**
      * Stores chunks to be written to the file
@@ -19,7 +19,15 @@ public class FileRestorer {
     private final String fileID;
     private int nChunks;
 
-    public FileRestorer(PeerService peer, String filepath, String restoredFilesPath, String fileID) {
+    /**
+     * File Restorer, responsible for aggregating the chunks and restoring a given file
+     *
+     * @param peer              peer this restorer belongs to
+     * @param filepath          path of the file to restore
+     * @param restoredFilesPath directory where the restored file will be placed
+     * @param fileID            id of the file to be restored
+     */
+    FileRestorer(PeerService peer, String filepath, String restoredFilesPath, String fileID) {
         this.peer = peer;
         this.filepath = filepath;
         this.restoredFilesPath = restoredFilesPath;
@@ -28,7 +36,13 @@ public class FileRestorer {
         restoredChunks = new ConcurrentHashMap<>();
     }
 
-    public void processRestoredChunks(String chunkNo, byte[] chunkData) {
+    /**
+     * Checks if the processed chunk is the last one and, if so, restore the file
+     *
+     * @param chunkNo   chunk number
+     * @param chunkData chunk content
+     */
+    void processRestoredChunks(String chunkNo, byte[] chunkData) {
         if (!restoredChunks.containsKey(chunkNo)) {
             restoredChunks.put(chunkNo, chunkData);
 
@@ -69,7 +83,10 @@ public class FileRestorer {
         System.out.println();
     }
 
-    public ConcurrentHashMap<String, byte[]> getRestoredChunks() {
+    /**
+     * @return chunks that have already been restored
+     */
+    ConcurrentHashMap<String, byte[]> getRestoredChunks() {
         return restoredChunks;
     }
 }

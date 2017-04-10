@@ -3,7 +3,10 @@ package peers;
 import java.io.IOException;
 import java.net.InetAddress;
 
-public class PeerLauncher {
+/**
+ * Peer Launcher
+ */
+class PeerLauncher {
     public static void main(String[] args) throws IOException {
         if (args.length != 9) {
             System.out.println(args.length);
