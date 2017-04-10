@@ -92,11 +92,9 @@ public class PeerService {
         PeerClientLink initiatorPeer = new PeerClientLink(this);
 
         try {
-            //TODO add ip address
-            Registry registry = LocateRegistry.getRegistry();
-            registry.bind(serviceAccessPoint, initiatorPeer);
+            Registry registry = LocateRegistry.getRegistry("localhost");
+            registry.rebind(serviceAccessPoint, initiatorPeer);
         } catch (Exception e) {
-            //TODO add rebind
             System.out.println("Peer error: " + e.getMessage());
             e.printStackTrace();
         }

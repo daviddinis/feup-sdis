@@ -11,8 +11,8 @@ public class PeerLauncher {
                     " <mcAddr> <mcPort> <mdbAddr> <mdbPort> <mdrAddr> <mdrPort>");
         }
 
-        String serverId = args[0];
-        String protocolVersion = args[1];
+        String protocolVersion = args[0];
+        String serverId = args[1];
         String serviceAccessPoint = args[2];
 
         InetAddress mcAddr = InetAddress.getByName(args[3]);
