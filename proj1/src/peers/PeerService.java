@@ -94,8 +94,8 @@ public class PeerService {
 
         try {
             //TODO add ip address
-            Registry registry = LocateRegistry.getRegistry();
-            registry.bind(serviceAccessPoint1, initiatorPeer);
+            Registry registry = LocateRegistry.getRegistry("localhost");
+            registry.rebind(serviceAccessPoint1, initiatorPeer);
         } catch (Exception e) {
             //TODO add rebind
             System.out.println("Peer error: " + e.getMessage());
