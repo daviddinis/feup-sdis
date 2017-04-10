@@ -359,9 +359,9 @@ class PeerService {
                     printHeader(response, true);
                 }
 
-                if (!isMarkedForBackup(fileID, chunkNo) && chunkManager.hasChunk(fileID,Integer.parseInt(chunkNo))) {
+                if (!isMarkedForBackup(fileID, chunkNo) ) {
                     markForBackup(fileID, chunkNo);
-                    if (protocolVersion.equals("2.0"))
+                    if (protocolVersion.equals("2.0") && chunkManager.hasChunk(fileID,Integer.parseInt(chunkNo)))
                         trackBackup(fileID, chunkNo);
                 } else {
                     incrementBackupRequests(fileID, chunkNo);
