@@ -346,12 +346,10 @@ class PeerService {
 
                 if (!isMarkedForBackup(fileID, chunkNo)) {
                     markForBackup(fileID, chunkNo);
-                    System.out.println("MARKING BACKUP!");
                     if (protocolVersion.equals("2.0"))
                         trackBackup(fileID, chunkNo);
                 } else {
                     incrementBackupRequests(fileID, chunkNo);
-                    System.out.format("Number of backup requests: %d\n", getNumBackupRequests(fileID, chunkNo));
                 }
 
                 input.read(chunk, 0, input.available());
@@ -504,7 +502,6 @@ class PeerService {
 
     private void trackBackup(String fileID, String chunkNo) {
         Runnable task = () -> {
-            System.out.println("\n\nLAUNCHED\n\n");
             try {
                 Thread.sleep(35000);
             } catch (InterruptedException e) {
@@ -513,7 +510,7 @@ class PeerService {
 
             if (isMarkedForBackup(fileID, chunkNo) && getNumBackupRequests(fileID, chunkNo) >= 5) {
                 unmarkForBackup(fileID, chunkNo);
-                System.out.format("Backup Timed out normally, no action to be taken");
+                System.out.format("Backup Timed out normally, no action to be taken\n");
                 return;
             }
 

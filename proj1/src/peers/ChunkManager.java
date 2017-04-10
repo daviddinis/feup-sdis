@@ -708,13 +708,6 @@ class ChunkManager {
         storedChunks.forEach((fileID, chunks) -> {
             for (Integer chunk : chunks) {
                 currentState[0] += "\tChunk ID: " + fileID + "_" + chunk + "\n";
-
-                // TODO get chunk size
-//                if((chunk + 1) == numberOfChunks)
-//                    currentState[0] += "\tChunk Size 20 Kb\n";
-//                else
-//                    currentState[0] += "\tChunk Size 64 Kb\n";
-
                 currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(fileID + "_" + chunk) + "\n";
             }
 

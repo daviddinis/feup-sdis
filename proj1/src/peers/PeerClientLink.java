@@ -90,7 +90,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         // Verifying if the file was already backed up
         int nChunks = peer.getNumChunks(fileID);
         if (nChunks == PeerService.ERROR) {
-            System.err.format("File %s is not known to this peer", path);
+            System.err.format("File %s is not known to this peer\n", path);
             return;
         }
 
