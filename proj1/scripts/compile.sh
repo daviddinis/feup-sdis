@@ -1,7 +1,6 @@
 #!/bin/bash
 
-rm -r bin/
-mkdir bin
+mkdir -p bin
 
 echo "Compiling..."
 javac $(find src | grep .java) -d bin
