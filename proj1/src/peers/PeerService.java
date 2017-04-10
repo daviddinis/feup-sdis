@@ -137,10 +137,16 @@ class PeerService {
         loadMyFiles();
     }
 
+    /**
+     * @return peer files path
+     */
     public String getMyFilesPath() {
         return myFilesPath;
     }
 
+    /**
+     * Sends the AHOY message, called when the peer goes online
+     */
     private void sendGreeting() {
         String header = makeHeader("AHOY", protocolVersion, serverId);
         controlChannel.sendMessage(header.getBytes());
@@ -344,14 +350,6 @@ class PeerService {
                     break;
                 }
 
-                if (!isMarkedForBackup(fileID, chunkNo)) {
-                    markForBackup(fileID, chunkNo);
-                    if (protocolVersion.equals("2.0"))
-                        trackBackup(fileID, chunkNo);
-                } else {
-                    incrementBackupRequests(fileID, chunkNo);
-                }
-
                 input.read(chunk, 0, input.available());
                 if (chunkManager.storeChunk(protocolVersion, fileID, chunkNo, replicationDegree, chunk)) {
                     String response = makeHeader("STORED", protocolVersion, serverId, fileID, chunkNo);
@@ -359,6 +357,14 @@ class PeerService {
                     controlChannel.sendMessage(response.getBytes());
                     chunkManager.registerStorage(protocolVersion, this.serverId, fileID, chunkNo);
                     printHeader(response, true);
+                }
+
+                if (!isMarkedForBackup(fileID, chunkNo) && chunkManager.hasChunk(fileID,Integer.parseInt(chunkNo))) {
+                    markForBackup(fileID, chunkNo);
+                    if (protocolVersion.equals("2.0"))
+                        trackBackup(fileID, chunkNo);
+                } else {
+                    incrementBackupRequests(fileID, chunkNo);
                 }
 
 
@@ -568,8 +574,10 @@ class PeerService {
         myFileNames.remove(myFileIDs.indexOf(fileID));
         saveMyFiles();
 
-        if (myFileIDs.remove(fileID) || chunkManager.isMarkedForDeletion(fileID)) {
-            chunkManager.markForDeletion(fileID);
+        if (myFileIDs.remove(fileID) || (protocolVersion.equals("2.0") && chunkManager.isMarkedForDeletion(fileID))) {
+            if(protocolVersion.equals("2.0"))
+                chunkManager.markForDeletion(fileID);
+
             chunkManager.deleteFile(fileID);
             for (int i = 0; i < 5; i++) {
                 String message = makeHeader("DELETE", protocolVersion, serverId, fileID);

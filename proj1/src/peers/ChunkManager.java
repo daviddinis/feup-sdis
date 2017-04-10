@@ -171,7 +171,7 @@ class ChunkManager {
      * @param fileID            file ID for the sent file
      * @param replicationDegree desired replication degree for the file
      */
-    public void registerFile(String fileID, int replicationDegree) {
+    void registerFile(String fileID, int replicationDegree) {
         if (desiredFileReplicationDegrees.get(fileID) != null) {
             desiredFileReplicationDegrees.remove(fileID);
         }
@@ -185,7 +185,7 @@ class ChunkManager {
      * @param fileID file to check
      * @return desired replication degree of the file
      */
-    public int getDesiredReplicationDegree(String fileID) {
+    int getDesiredReplicationDegree(String fileID) {
         return desiredFileReplicationDegrees.getOrDefault(fileID, -1);
     }
 
@@ -228,7 +228,7 @@ class ChunkManager {
      * @param chunkData         chunk data
      * @return true if the chunk was registered and stored
      */
-    public boolean storeChunk(String protocolVersion, String fileID, String chunkNo, String replicationDegree, byte[] chunkData) {
+    boolean storeChunk(String protocolVersion, String fileID, String chunkNo, String replicationDegree, byte[] chunkData) {
         if (protocolVersion == null || fileID == null || chunkData == null
                 || replicationDegree == null
                 || chunkNo == null)
@@ -302,7 +302,7 @@ class ChunkManager {
      * @param fileID          id of the file whose chunk was stored
      * @param chunkNo         chunk number of the stored chunk
      */
-    public void registerStorage(String protocolVersion, String senderID, String fileID, String chunkNo) {
+    void registerStorage(String protocolVersion, String senderID, String fileID, String chunkNo) {
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
             return;
 
@@ -337,7 +337,7 @@ class ChunkManager {
      * @param chunkNo         chunk number of the removed chunk
      * @return true on success, false if the file was not registered on this peer
      */
-    public boolean registerRemoval(String protocolVersion, String senderID, String fileID, String chunkNo) {
+    boolean registerRemoval(String protocolVersion, String senderID, String fileID, String chunkNo) {
         if (protocolVersion == null || senderID == null || fileID == null || chunkNo == null)
             return false;
 
@@ -362,7 +362,7 @@ class ChunkManager {
      * @param chunkNo Number of the chunk to be searched
      * @return true if the chunk exists on the filesystem, false otherwise
      */
-    public boolean hasChunk(String fileID, Integer chunkNo) {
+    boolean hasChunk(String fileID, Integer chunkNo) {
 
         ArrayList<Integer> fileStoredChunks;
         fileStoredChunks = storedChunks.get(fileID);
@@ -378,12 +378,12 @@ class ChunkManager {
      * @param chunkNo chunk number of the chunk
      * @return the perceived replication degree of the chunk
      */
-    public int getReplicationDegree(String fileID, String chunkNo) {
+    int getReplicationDegree(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         return chunkMap.containsKey(key) ? chunkMap.get(key).size() : -1;
     }
 
-    public void registerNumChunks(String fileID, int numChunks) {
+    void registerNumChunks(String fileID, int numChunks) {
         if (numChunksFile.containsKey(fileID))
             return;
 
@@ -396,7 +396,7 @@ class ChunkManager {
      * @param fileID file ID of the file
      * @return number of chunks the file has or ERROR (-1) if the file is not registered
      */
-    public int getNumChunks(String fileID) {
+    int getNumChunks(String fileID) {
         return numChunksFile.getOrDefault(fileID, PeerService.ERROR);
     }
 
@@ -406,7 +406,7 @@ class ChunkManager {
      *
      * @param fileID ID of the file to be deleted
      */
-    public void markForDeletion(String fileID) {
+    void markForDeletion(String fileID) {
 
         for (Map.Entry<String, ArrayList<Integer>> entry : chunkMap.entrySet()) {
             if (entry.getKey().startsWith(fileID)) {
@@ -428,7 +428,7 @@ class ChunkManager {
      * @param fileID   ID of the file who's chunk was deleted
      * @param chunkNo  Number of the deleted chunk
      */
-    public void registerDeletion(String senderID, String fileID, String chunkNo) {
+    void registerDeletion(String senderID, String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         ArrayList<Integer> chunkPeers = markedForDeletion.get(key);
         if (chunkPeers == null)
@@ -451,7 +451,7 @@ class ChunkManager {
      * @param senderID id of the peer to check
      * @return list of chunks the peer should remove
      */
-    public ArrayList<String> checkDeletion(String senderID) {
+    ArrayList<String> checkDeletion(String senderID) {
         if (markedForDeletion.isEmpty())
             return null;
 
@@ -483,7 +483,7 @@ class ChunkManager {
      * @param fileID file to check
      * @return true if the file is marked for deletion
      */
-    public boolean isMarkedForDeletion(String fileID) {
+    boolean isMarkedForDeletion(String fileID) {
         if (!markedForDeletion.isEmpty()) {
             /* checks all the entries to see if the chunk belongs to this file */
             for (Map.Entry<String, ArrayList<Integer>> entry : markedForDeletion.entrySet()) {
@@ -500,7 +500,7 @@ class ChunkManager {
      *
      * @param fileID file ID of the file whose chunks are to be deleted
      */
-    public ArrayList<String> deleteFile(String fileID) {
+    ArrayList<String> deleteFile(String fileID) {
         ArrayList<Integer> fileChunks = storedChunks.get(fileID);
         ArrayList<String> deletedChunks = null;
         if (fileChunks == null) {  // peer has no chunks belonging to this file
@@ -541,7 +541,7 @@ class ChunkManager {
      * @return byte array with the content of the chunk
      * @throws IOException
      */
-    public byte[] getChunkData(String fileID, String chunkNo) throws IOException {
+    byte[] getChunkData(String fileID, String chunkNo) throws IOException {
 
         String filename = fileID + "_" + chunkNo;
         FileInputStream chunkFile;
@@ -569,7 +569,7 @@ class ChunkManager {
      * @param availableSpace maximum space to be occupied by the stored chunks
      * @return ArrayList with the names of the deleted files
      */
-    public ArrayList<String> reclaimSpace(long availableSpace) {
+    ArrayList<String> reclaimSpace(long availableSpace) {
         File chunkDir = new File(chunksPath);
         ArrayList<String> deletedChunks = new ArrayList<>();
 
@@ -629,7 +629,7 @@ class ChunkManager {
      *
      * @return occupied space, in bytes
      */
-    public long getOccupiedSpace() {
+    long getOccupiedSpace() {
         File chunkDir = new File(chunksPath);
         long occupiedSpace = 0;
         for (File file : chunkDir.listFiles()) {
@@ -646,7 +646,7 @@ class ChunkManager {
      * @param chunkNo number of the chunk
      * @return true if it has the chunk, false otherwise
      */
-    public void registerChunkMessage(String fileID, String chunkNo) {
+    void registerChunkMessage(String fileID, String chunkNo) {
 
         if (!hasChunk(fileID, Integer.parseInt(chunkNo))) {
             return;
@@ -665,7 +665,7 @@ class ChunkManager {
      * @param chunkNo number of the chunk
      * @return true if the peer can send the message, false otherwise
      */
-    public boolean canSendChunkMessage(String fileID, String chunkNo) {
+    boolean canSendChunkMessage(String fileID, String chunkNo) {
 
         if (restoredChunkList.contains(fileID + "_" + chunkNo)) {
             restoredChunkList.remove(fileID + "_" + chunkNo);
@@ -681,7 +681,7 @@ class ChunkManager {
      * @param fileID id of the file
      * @return A string with all of the information
      */
-    public String getFileCurrentState(String fileID) {
+    String getFileCurrentState(String fileID) {
         final String[] currentState = {""};
 
         currentState[0] += "\tDesired replication degree: " + desiredFileReplicationDegrees.get(fileID) + "\n";
@@ -702,7 +702,7 @@ class ChunkManager {
      *
      * @return
      */
-    public String getChunksState() {
+    String getChunksState() {
         final String[] currentState = {""};
 
         storedChunks.forEach((fileID, chunks) -> {
