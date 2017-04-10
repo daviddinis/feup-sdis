@@ -140,7 +140,7 @@ class ChunkManager {
      */
     private boolean loadState() {
         try {
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId + '/' + STATE_FILENAME));
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(PeerService.PEER_DIRECTORY + serverId + '/' + STATE_FILENAME));
             //noinspection unchecked
             numChunksFile = (ConcurrentHashMap<String, Integer>) ois.readObject();
             //noinspection unchecked

@@ -929,7 +929,7 @@ class PeerService {
             oos.writeObject(myFileIDs);
             oos.writeObject(myFileNames);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Unable to save peer filenames");
         }
     }
 
