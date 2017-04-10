@@ -24,7 +24,6 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
     public PeerClientLink(PeerService peer) throws RemoteException {
         this.peer = peer;
-
     }
 
     @Override

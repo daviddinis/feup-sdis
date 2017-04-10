@@ -13,15 +13,14 @@ public class ClientInterface {
 
     public static void main(String args[]) throws IOException, NotBoundException {
 
-        if (args.length != 4 && args.length != 5) {
+        if (args.length < 4) {
             System.out.println(args.length);
             throw new IllegalArgumentException("\nUsage: java ClientInterface <peerAp>" +
-                    " <protocol-version> <operation> <opnd1> <opnd2> ");
+                    " <sub_protocol> <opnd1> <opnd2> ");
         }
 
         String peerAp = args[0];
-
-        String operation = args[2];
+        String operation = args[1];
 
         try {
             Registry registry = LocateRegistry.getRegistry();
@@ -31,28 +30,30 @@ public class ClientInterface {
             e.printStackTrace();
         }
 
-        String pathname;
+        String filepath;
+        int replicationDegree;
+        int maxDiskSpace;
 
         try {
             switch (operation.toUpperCase()) {
-                case "BACKUP":
-                    pathname = args[3];
-                    int replicationDegree = Integer.parseInt(args[4]);
-                    System.out.println("Requesting backup of file " + pathname + " with a replication degree of " + replicationDegree);
-                    initiatorPeer.backup(pathname, replicationDegree);
+               case "BACKUP":
+                    filepath = args[2];
+                    replicationDegree = Integer.parseInt(args[3]);
+                    System.out.println("Requesting backup of file " + filepath + " with a replication degree of " + replicationDegree);
+                    initiatorPeer.backup(filepath, replicationDegree);
                     break;
                 case "RESTORE":
-                    pathname = args[3];
-                    System.out.println("Requesting restore of file" + pathname);
-                    initiatorPeer.restore(pathname);
+                    filepath = args[2];
+                    System.out.println("Requesting restore of file" + filepath);
+                    initiatorPeer.restore(filepath);
                     break;
                 case "DELETE":
-                    pathname = args[3];
-                    System.out.println("Requesting deletion of file" + pathname);
-                    initiatorPeer.delete(pathname);
+                    filepath = args[2];
+                    System.out.println("Requesting enhanced deletion of file" + filepath);
+                    initiatorPeer.delete(filepath);
                     break;
                 case "RECLAIM":
-                    int maxDiskSpace = Integer.parseInt(args[3]);
+                    maxDiskSpace = Integer.parseInt(args[2]);
                     System.out.println("Updating maximum available space to " + maxDiskSpace);
                     initiatorPeer.reclaim(maxDiskSpace);
                     break;

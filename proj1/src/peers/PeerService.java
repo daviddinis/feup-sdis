@@ -23,7 +23,7 @@ public class PeerService {
     private static final String MYFILES_FILENAME = "my_files_names";
 
     private final String serverId;
-    private final String protocolVersion;
+    private String protocolVersion;
 
     private PeerChannel controlChannel;
     private PeerChannel dataBackupChannel;
@@ -75,7 +75,6 @@ public class PeerService {
 
         this.serverId = serverId;
         this.protocolVersion = protocolVersion;
-        String serviceAccessPoint1 = serviceAccessPoint;
 
         controlChannel = new PeerChannel(mcAddr, mcPort, this);
         System.out.println("Control Channel ready! Listening...");
@@ -95,7 +94,7 @@ public class PeerService {
         try {
             //TODO add ip address
             Registry registry = LocateRegistry.getRegistry();
-            registry.bind(serviceAccessPoint1, initiatorPeer);
+            registry.bind(serviceAccessPoint, initiatorPeer);
         } catch (Exception e) {
             //TODO add rebind
             System.out.println("Peer error: " + e.getMessage());
@@ -131,7 +130,7 @@ public class PeerService {
 
         markedForBackup = new ConcurrentHashMap<>();
 
-        if(protocolVersion.equals("1.3")) {
+        if(protocolVersion.equals("2.0")) {
             try {
                 Thread.sleep(500);
                 sendGreeting();
@@ -142,6 +141,7 @@ public class PeerService {
 
         loadMyFiles();
     }
+
 
     private void sendGreeting(){
         String header = makeHeader("AHOY",protocolVersion,serverId);
@@ -213,6 +213,7 @@ public class PeerService {
 
         Runnable task = () -> {
             int counter = 1, multiplier = 1;
+            String version;
             String header = makeHeader("PUTCHUNK", protocolVersion, serverId, fileId,
                     Integer.toString(chunkNo), Integer.toString(replicationDegree));
 
@@ -347,7 +348,7 @@ public class PeerService {
 		        if(!isMarkedForBackup(fileID,chunkNo)) {
                     markForBackup(fileID, chunkNo);
                     System.out.println("MARKING BACKUP!");
-                    if(protocolVersion.equals("1.4"))
+                    if(protocolVersion.equals("2.0"))
                         trackBackup(fileID,chunkNo);
                 }
                 else {
@@ -429,7 +430,7 @@ public class PeerService {
                 String fileID = messageHeader[3];
                 ArrayList<String> deletedChunks = chunkManager.deleteFile(fileID);
 
-                if(protocolVersion.equals("1.3") && deletedChunks != null){
+                if(protocolVersion.equals("2.0") && deletedChunks != null){
                     for(String chunkNo : deletedChunks){
                         String response = makeHeader("DELETED",protocolVersion,serverId,fileID,chunkNo);
                         printHeader(response, true);
@@ -466,7 +467,7 @@ public class PeerService {
                         if(!isMarkedForBackup(fileID, chunkNo)) {
                             requestChunkBackup(fileID, Integer.parseInt(chunkNo), desiredReplicationDegree, chunk);
 
-                            if(protocolVersion.equals("1.4")){
+                            if(protocolVersion.equals("2.0")){
                                 trackBackup(fileID, chunkNo);
                             }
                         }
@@ -699,7 +700,7 @@ public class PeerService {
 
         if(chunkManager.canSendChunkMessage(fileID,chunkNo)){
 
-            if(protocolVersion.equals("1.2")){
+            if(protocolVersion.equals("2.0")){
                 try {
                     Socket restoreSocket = new Socket(address,dataRestorePort);
 
