@@ -49,7 +49,7 @@ public class ClientInterface {
                     break;
                 case "DELETE":
                     filepath = args[2];
-                    System.out.println("Requesting enhanced deletion of file" + filepath);
+                    System.out.println("Requesting deletion of file" + filepath);
                     initiatorPeer.delete(filepath);
                     break;
                 case "RECLAIM":

@@ -90,7 +90,7 @@ public class ChunkManager {
         chunkRepDegProperties = new Properties();
 
         /* Create chunk replication degree file */
-        String filepath = serverId + "/" + CHUNK_MAP_FILENAME;
+        String filepath = PeerService.PEER_DIRECTORY + serverId + "/" + CHUNK_MAP_FILENAME;
         File file = new File(filepath);
         try {
             file.createNewFile();
@@ -106,7 +106,7 @@ public class ChunkManager {
     private boolean saveReplicationDegrees(){
         chunkRepDegProperties.putAll(perceivedChunkRepDeg);
         try {
-            chunkRepDegProperties.store(new FileOutputStream(serverId + '/' + CHUNK_MAP_FILENAME),"FileID_ChunkNo=PerceivedReplicationDegree");
+            chunkRepDegProperties.store(new FileOutputStream(PeerService.PEER_DIRECTORY + serverId + '/' + CHUNK_MAP_FILENAME),"FileID_ChunkNo=PerceivedReplicationDegree");
         } catch (IOException e) {
             System.err.println("Failed to write to chunk file");
             return false;
@@ -120,7 +120,7 @@ public class ChunkManager {
      */
     private synchronized boolean saveState(){
         try {
-            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(serverId + '/' + STATE_FILENAME));
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(PeerService.PEER_DIRECTORY + serverId + '/' + STATE_FILENAME));
             oos.writeObject(numChunksFile);
             oos.writeObject(chunkMap);
             oos.writeObject(perceivedChunkRepDeg);

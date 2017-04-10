@@ -24,6 +24,7 @@ public class PeerService {
 
     private final String serverId;
     private String protocolVersion;
+    public static final String PEER_DIRECTORY = "my_peers/";
 
     private PeerChannel controlChannel;
     private PeerChannel dataBackupChannel;
@@ -40,6 +41,7 @@ public class PeerService {
     private final int dataRestorePort;
 
     private String restoredFilesPath;
+    private String myFilesPath;
 
     private ChunkManager chunkManager;
 
@@ -100,14 +102,14 @@ public class PeerService {
         }
 
 
-        String chunksPath = serverId + "/chunks";
-        String myFilesPath = serverId + "/my_files";
-        restoredFilesPath = serverId + "/restored_files";
+        String chunksPath = PEER_DIRECTORY + serverId + "/chunks";
+        myFilesPath = PEER_DIRECTORY + serverId + "/my_files";
+        restoredFilesPath = PEER_DIRECTORY + serverId + "/restored_files";
 
         myFileIDs = new ArrayList<>();
         myFileNames = new ArrayList<>();
 
-        createDir(serverId);
+        createDir(PEER_DIRECTORY + serverId);
         createDir(myFilesPath);
         createDir(chunksPath);
         createDir(restoredFilesPath);
@@ -140,6 +142,9 @@ public class PeerService {
         loadMyFiles();
     }
 
+    public String getMyFilesPath() {
+        return myFilesPath;
+    }
 
     private void sendGreeting(){
         String header = makeHeader("AHOY",protocolVersion,serverId);
@@ -861,7 +866,7 @@ public class PeerService {
 
     public void saveMyFiles(){
         try {
-            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(serverId + '/' + MYFILES_FILENAME));
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(PEER_DIRECTORY +  serverId + '/' + MYFILES_FILENAME));
             oos.writeObject(myFileIDs);
             oos.writeObject(myFileNames);
         } catch (IOException e) {
@@ -871,7 +876,7 @@ public class PeerService {
 
     public void loadMyFiles(){
         try {
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId + '/' + MYFILES_FILENAME));
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(PEER_DIRECTORY + serverId + '/' + MYFILES_FILENAME));
             myFileIDs = (ArrayList<String>) ois.readObject();
             myFileNames = (ArrayList<String>) ois.readObject();
         } catch (IOException | ClassNotFoundException e) {

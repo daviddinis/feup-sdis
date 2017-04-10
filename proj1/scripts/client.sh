@@ -53,6 +53,6 @@ fi
 
 #Client
 #java cli.ClientInterface <peer_access_point> <operation> <operands>*
-xterm -e "java cli.ClientInterface $1 $2 $3 $4 2> /dev/null
+xterm -e "cd bin && java cli.ClientInterface $1 $2 $3 $4 2> /dev/null
 $SHELL" &
 wait

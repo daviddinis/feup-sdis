@@ -33,9 +33,15 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         }
 
         FileInputStream file = null;
+        String path;
+        if(filepath.startsWith(peer.getMyFilesPath()))
+            path = filepath;
+        else path = peer.getMyFilesPath() + '/' + filepath;
         try {
-            file = new FileInputStream(filepath);
+            file = new FileInputStream(path);
         } catch (FileNotFoundException e) {
+            System.out.format("File %s not found in the peer's files directory. Place it in the myPeers/<peer_id>/myFiles directory\n", path);
+            return;
         }
 
         System.out.println("New backup request for file " + filepath);
@@ -43,10 +49,8 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         int readableBytes = -1;
         byte[] chunk;
 
-        String fileId = getFileHash(filepath);
+        String fileId = getFileHash(path);
 
-        if(file == null)
-            throw new IOException("PeerClientLink :: backup :: Could not open file");
         while (file.available() > 0) {
             readableBytes = file.available();
 
@@ -80,12 +84,13 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
 
         System.out.println("New restore request for file " + filepath);
 
-        String fileID = getFileHash(filepath);
+        String path = peer.getMyFilesPath() + '/' + filepath;
+        String fileID = getFileHash(path);
 
         // Verifying if the file was already backed up
         int nChunks = peer.getNumChunks(fileID);
         if (nChunks == PeerService.ERROR) {
-            System.err.format("File %s is not known to this peer", filepath);
+            System.err.format("File %s is not known to this peer", path);
             return;
         }
 
@@ -106,9 +111,11 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
         if (filepath == null)
             throw new IllegalArgumentException("Invalid arguments for delete");
 
+        String path = peer.getMyFilesPath() + '/' + filepath;
+
         System.out.println("New delete request for file " + filepath);
 
-        String fileID = getFileHash(filepath);
+        String fileID = getFileHash(path);
         peer.requestFileDeletion(fileID);
     }
 
