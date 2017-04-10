@@ -71,7 +71,7 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
             chunkNo++;
         }
 
-        peer.registerFile(fileId, replicationDegree, chunkNo);
+        peer.registerFile(fileId, replicationDegree, chunkNo,filepath);
     }
 
     @Override
@@ -121,8 +121,12 @@ public class PeerClientLink extends UnicastRemoteObject implements InitiatorInte
     }
 
     @Override
-    public void state() throws RemoteException {
+    public String state() throws RemoteException {
+        String state = peer.getCurrentState();
 
+        System.out.println(state);
+
+        return state;
     }
 
     private String getFileHash(String filepath) throws IOException {

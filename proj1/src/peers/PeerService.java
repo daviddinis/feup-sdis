@@ -20,8 +20,7 @@ public class PeerService {
     private static final byte CR = 0xD;
     private static final byte LF = 0xA;
     private static final String CRLF = "\r\n";
-    private static final int FIRST_DEFAULT_PORT = 1024;
-    private static final int LAST_AVAILABLE_PORT = 65535;
+    private static final String MYFILES_FILENAME = "my_files_names";
 
     private final String serverId;
     private final String protocolVersion;
@@ -67,7 +66,9 @@ public class PeerService {
      */
     private ConcurrentHashMap<String, Integer> markedForBackup;
 
-    private final ArrayList<String> myFileIDs;
+    private ArrayList<String> myFileIDs;
+
+    private ArrayList<String> myFileNames;
 
     public PeerService(String serverId, String protocolVersion, String serviceAccessPoint, InetAddress mcAddr, int mcPort, InetAddress mdbAddr, int mdbPort,
                        InetAddress mdrAddr, int mdrPort) throws IOException {
@@ -107,6 +108,7 @@ public class PeerService {
         restoredFilesPath = serverId + "/restored_files";
 
         myFileIDs = new ArrayList<>();
+        myFileNames = new ArrayList<>();
 
         createDir(serverId);
         createDir(myFilesPath);
@@ -137,9 +139,11 @@ public class PeerService {
                 e.printStackTrace();
             }
         }
+
+        loadMyFiles();
     }
 
-    private void sendGreeting(){  
+    private void sendGreeting(){
         String header = makeHeader("AHOY",protocolVersion,serverId);
         controlChannel.sendMessage(header.getBytes());
         printHeader(header,true);
@@ -568,6 +572,9 @@ public class PeerService {
      * @param fileID file ID of the file to be deleted
      */
     public void requestFileDeletion(String fileID) {
+        myFileNames.remove(myFileIDs.indexOf(fileID));
+        saveMyFiles();
+        
         if(myFileIDs.remove(fileID) || chunkManager.isMarkedForDeletion(fileID)){
             chunkManager.markForDeletion(fileID);
             chunkManager.deleteFile(fileID);
@@ -718,15 +725,19 @@ public class PeerService {
      * Called when a file backup is requested by the client
      * Registers the file as belonging to this peer and registers the file and the number of chunks
      * in the ChunkManager
-     *
-     * @param fileId            file ID of the file to backup
+     *  @param fileId            file ID of the file to backup
      * @param replicationDegree desired replication degree of the file to backup
      * @param numChunks         number of chunks in the file to backup
+     * @param filepath
      */
-    public void registerFile(String fileId, int replicationDegree, int numChunks) {
+    public void registerFile(String fileId, int replicationDegree, int numChunks, String filepath) {
         myFileIDs.add(fileId);
+        myFileNames.add(filepath);
+        saveMyFiles();
+
         chunkManager.registerFile(fileId, replicationDegree);
         chunkManager.registerNumChunks(fileId, numChunks);
+
     }
 
     public int getNumChunks(String fileID) {
@@ -823,8 +834,50 @@ public class PeerService {
         return markedForBackup.getOrDefault(key,-1);
     }
 
-    private void incrementBackupRequests(String fileID, String chunkNo){
+    private void incrementBackupRequests(String fileID, String chunkNo) {
         String key = fileID + '_' + chunkNo;
         markedForBackup.replace(key, markedForBackup.get(key) + 1);
+    }
+
+    public String getCurrentState() {
+
+        String currentState = "\t\t============ FILES ============\n\n";
+
+        for (int i=0;i<myFileIDs.size();i++){
+            currentState += "File number " + i + "\n";
+            currentState += "\tFilename: " + myFileNames.get(i) + ";\n";
+            currentState += "\tFile backup service id: " + myFileIDs.get(i) + ";\n";
+            currentState += chunkManager.getFileCurrentState(myFileIDs.get(i));
+        }
+
+        currentState += "\n\t\t============ CHUNKS ============\n\n";
+        currentState += chunkManager.getChunksState();
+
+        currentState += "\n\t\t============ SIZE ============\n\n";
+        currentState += "\tMaximum Amount to store chunks: " + availableSpace + " Kb\n";
+        currentState += "\tStorage used to backup chunks: " + (chunkManager.getOccupiedSpace()/1000) + " Kb\n";
+        currentState += "\tSpace available: " + (availableSpace - (chunkManager.getOccupiedSpace()/1000)) + " Kb\n";
+
+        return currentState;
+    }
+
+    public void saveMyFiles(){
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(serverId + '/' + MYFILES_FILENAME));
+            oos.writeObject(myFileIDs);
+            oos.writeObject(myFileNames);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void loadMyFiles(){
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(serverId + '/' + MYFILES_FILENAME));
+            myFileIDs = (ArrayList<String>) ois.readObject();
+            myFileNames = (ArrayList<String>) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Unable to load peer filenames");
+        }
     }
 }

@@ -12,6 +12,7 @@ public class ChunkManager {
     private static final int MAX_SLEEP_TIME = 400;
     /**
      * stores the number of chunks every file has
+     * key = <fileID>_<ChunkNo>
      */
     private ConcurrentHashMap<String, Integer> numChunksFile;
 
@@ -233,7 +234,7 @@ public class ChunkManager {
 
         try {
 
-            if(protocolVersion.equals("1.1")){ 
+            if(protocolVersion.equals("1.1")){
                 sleep();
                 if(chunkMap.containsKey(chunkKey)){
                     //verifying if the replication degree desire by the peer was already reached
@@ -636,5 +637,47 @@ public class ChunkManager {
         }
 
         return true;
+    }
+
+    /**
+     * Given a file id it returns the file state, replication degree, chunks,...
+     * @param fileID id of the file
+     * @return A string with all of the information
+     */
+    public String getFileCurrentState(String fileID){
+        final String[] currentState = {""};
+
+        currentState[0] += "\tDesired replication degree: " + desiredFileReplicationDegrees.get(fileID)+"\n";
+
+        perceivedChunkRepDeg.forEach((key,value)->{
+            String[] keyParts = key.split("_");
+            if(keyParts[0].equals(fileID)){
+                currentState[0] += "\tChunk ID: " + keyParts[1] + "\n";
+                currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(key) +"\n";
+            }
+        });
+
+        return currentState[0];
+    }
+
+    public String getChunksState(){
+        final String[] currentState = {""};
+
+        storedChunks.forEach((fileID,chunks)->{
+            for(Integer chunk: chunks){
+                currentState[0] += "\tChunk ID: "+ fileID + "_" + chunk + "\n";
+
+                // TODO get chunk size
+//                if((chunk + 1) == numberOfChunks)
+//                    currentState[0] += "\tChunk Size 20 Kb\n";
+//                else
+//                    currentState[0] += "\tChunk Size 64 Kb\n";
+
+                currentState[0] += "\t\tPerceived replication degree: " + perceivedChunkRepDeg.get(fileID+"_"+chunk) + "\n";
+            }
+
+        });
+
+        return currentState[0];
     }
 }
