@@ -592,11 +592,15 @@ class ChunkManager {
             for (File chunk : chunks) {
 
                 String[] chunkInfo = chunk.getName().split("_");
-                if (chunkInfo.length < 2)
+                if (chunkInfo.length < 2) {
+                    System.out.println(chunk.getName());
                     chunk.delete();
+                    continue;
+                }
 
                 fileID = chunkInfo[0];
                 chunkNo = chunkInfo[1];
+
 
                 if (getReplicationDegree(fileID, chunkNo) > getReplicationDegree(toDeleteFileID, toDeleteChunkNo)) {
                     toDelete = chunk;
