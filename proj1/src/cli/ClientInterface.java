@@ -13,7 +13,7 @@ public class ClientInterface {
 
     public static void main(String args[]) throws IOException, NotBoundException {
 
-        if (args.length < 4) {
+        if (args.length == 0) {
             System.out.println(args.length);
             throw new IllegalArgumentException("\nUsage: java ClientInterface <peerAp>" +
                     " <sub_protocol> <opnd1> <opnd2> ");

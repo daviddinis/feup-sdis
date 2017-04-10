@@ -7,7 +7,7 @@ public class PeerLauncher {
     public static void main(String[] args) throws IOException {
         if (args.length != 9) {
             System.out.println(args.length);
-            throw new IllegalArgumentException("\nUsage: java PeerLauncher <peerId> <protocolVersion> <accessPoint>" +
+            throw new IllegalArgumentException("\nUsage: java PeerLauncher <protocolVersion> <peerId>  <accessPoint>" +
                     " <mcAddr> <mcPort> <mdbAddr> <mdbPort> <mdrAddr> <mdrPort>");
         }
 

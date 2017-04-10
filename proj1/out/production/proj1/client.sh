@@ -2,7 +2,7 @@
 
 function usage {
 	echo "sh client.sh <peer> <operation> [<operand1> [<operand2>]]"
-	echo "Available operations: BACKUP, RESTORE, DELETE, RECLAIM and STATUS"
+	echo "Available operations: BACKUP, RESTORE, DELETE, RECLAIM and STATE"
 }
 
 
@@ -13,7 +13,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 
-if [ "$2" != "BACKUP" -a "$2" != "RESTORE"  -a "$2" != "DELETE"  -a "$2" != "RECLAIM"  -a "$2" != "STATUS" ]; then
+if [ "$2" != "BACKUP" -a "$2" != "RESTORE"  -a "$2" != "DELETE"  -a "$2" != "RECLAIM"  -a "$2" != "STATE" ]; then
 	echo "Invalid operation! Usage:"
 	usage
 	exit 1;

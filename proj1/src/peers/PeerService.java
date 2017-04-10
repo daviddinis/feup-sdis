@@ -92,7 +92,7 @@ public class PeerService {
         PeerClientLink initiatorPeer = new PeerClientLink(this);
 
         try {
-            Registry registry = LocateRegistry.getRegistry("localhost");
+            Registry registry = LocateRegistry.getRegistry();
             registry.rebind(serviceAccessPoint, initiatorPeer);
         } catch (Exception e) {
             System.out.println("Peer error: " + e.getMessage());
@@ -224,7 +224,6 @@ public class PeerService {
 
             do {
                 counter++;
-                System.out.println(counter);
                 if (dataBackupChannel.sendMessage(buf))
                     printHeader(header, true);
 
