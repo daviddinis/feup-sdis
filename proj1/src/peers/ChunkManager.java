@@ -243,7 +243,7 @@ class ChunkManager {
 
         try {
 
-            if (protocolVersion.equals("1.1")) {
+            if (protocolVersion.equals("2.0")) {
                 sleep();
                 if (chunkMap.containsKey(chunkKey)) {
                     //verifying if the replication degree desire by the peer was already reached

@@ -483,7 +483,7 @@ class PeerService {
                 break;
             }
             case "AHOY": {
-                if (!protocolVersion.equals("1.3"))
+                if (!protocolVersion.equals("2.0"))
                     break;
                 ArrayList<String> filesToDelete = chunkManager.checkDeletion(senderID);
                 if (filesToDelete == null)
@@ -715,7 +715,6 @@ class PeerService {
                 dataRestoreChannel.sendMessage(buf);
             }
             printHeader(header, true);
-            //TODO random time uniformly distributed
         }
 
     }
