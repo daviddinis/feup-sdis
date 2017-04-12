@@ -32,6 +32,7 @@
 proj1/out
 proj1/proj1.iml
 proj1/.idea
+labs/.idea
 lab1/lab1.iml
 
 # mpeltonen/sbt-idea plugin
