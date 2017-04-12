@@ -55,3 +55,6 @@ bash scripts/client.sh peer1 DELETE thisfile.txt
 # reclaim example - value in 10 ^ 3 bytes
 bash scripts/client.sh peer1 RECLAIM 6400
 ```
+
+The files used as an argument for the script should be on the my_files directory of the peer folder
+(.../feup-sdis/proj1/bin/my_peers/<peer-id>/my_files)
